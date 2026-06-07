@@ -14,8 +14,7 @@
       {
         "title": "Beyond Wrapped",
         "width": 420,
-        "height": 625,
-        "alwaysOnTop": true
+        "height": 625
       }
     ],
     "security": {

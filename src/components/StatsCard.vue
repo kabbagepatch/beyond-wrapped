@@ -8,10 +8,10 @@
             v-if="entry.link"
             :to="`/${card.linkType}/${encodeURIComponent(entry.link)}`"
           >
-            <span class="left-entry">{{ entry.left }}</span>
+            <span :class="['left-entry', { 'left-entry-small': smallLeftEntry }]">{{ entry.left }}</span>
           </router-link>
           <div v-else ><span class="left-entry">{{ entry.left }}</span></div>
-          <div>{{ entry.right }}</div>
+          <div class="right-entry">{{ entry.right }}</div>
         </div>
       </div>
     </card>
@@ -29,6 +29,7 @@ defineProps<{
   }
   visible: boolean
   entries: number
+  smallLeftEntry?: boolean
 }>();
 
 const emit = defineEmits<{
@@ -70,7 +71,6 @@ const emit = defineEmits<{
 
 .entry {
   display: flex;
-  justify-content: space-between;
   text-align: left;
   text-shadow: none;
   color: var(--background-color);
@@ -97,10 +97,19 @@ const emit = defineEmits<{
 }
 
 .left-entry {
-  width: calc(var(--width) - 150px);
-  display: flex;
-  flex-wrap: nowrap;
+  width: calc(var(--width) - 90px);
+  display: block;
   white-space: nowrap;
-  overflow-x: hidden;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.left-entry-small {
+  width: calc(var(--width) - 140px);
+}
+
+.right-entry {
+  width: 100%;
+  text-align: right;
 }
 </style>

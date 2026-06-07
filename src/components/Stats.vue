@@ -16,6 +16,7 @@
       :visible="displayCardTwo"
       :entries="displaySummary ? 5 : 200"
       @toggle="toggleCardTwo"
+      :smallLeftEntry="smallLeftEntry"
     />
     <stats-card
       :card="cardThree"
@@ -35,6 +36,7 @@ defineProps<{
   cardOne: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[], linkType?: 'tracks' | 'artists' | 'albums' },
   cardTwo?: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[], linkType?: 'tracks' | 'artists' | 'albums' },
   cardThree?: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[], linkType?: 'tracks' | 'artists' | 'albums' },
+  smallLeftEntry?: boolean
 }>();
 
 const displaySummary = ref(true);

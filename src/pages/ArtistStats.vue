@@ -11,6 +11,7 @@
       ]"
       :cardOne="{ title: 'Top Tracks', entries: artist.topTracks.map(track => ({ left: track.trackName, right: track.playCount, link: track.key })), linkType: 'tracks' }"
       :cardTwo="{ title: 'First Tracks', entries: artist.firstTracks.map(track => ({ left: track.trackName, right: track.firstPlayed, link: track.key })), linkType: 'tracks' }"
+      :smallLeftEntry="true"
     />
   </div>
 </template>
