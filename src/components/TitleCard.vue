@@ -51,6 +51,8 @@ defineProps<{
 .title {
   font-size: 32px;
   margin: 0;
+  color: var(--text-color);
+  text-shadow: -1.5px -1.5px 0 var(--text-outline), 1.5px -1.5px 0 var(--text-outline), -1.5px 1.5px 0 var(--text-outline), 1.5px 1.5px 0 var(--text-outline);
 }
 
 .subtitle {

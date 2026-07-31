@@ -10,14 +10,14 @@ export const themes : { [theme: string]: { [key: string]: string } } = {
     'text-outline': 'hsl(276, 100%, 25%)'
   },
   'Coffee': {
-    'primary-color': 'hsl(39, 59%, 78%)',
-    'primary-color-shadow': 'hsl(39, 59%, 58%)',
-    'secondary-color': 'hsl(18, 71%, 27%)',
-    'tertiary-color': 'hsl(31, 51%, 34%)',
-    'background-color': 'hsl(26, 42%, 19%)',
-    'background-color-dark': 'hsl(26, 42%, 15%)',
-    'text-color': 'hsl(0, 0%, 100%)',
-    'text-outline': 'hsl(26, 42%, 19%)',
+    'primary-color': 'hsl(25, 29%, 18%)',
+    'primary-color-shadow': 'hsl(25, 29%, 25%)',
+    'secondary-color': 'hsl(345, 7%, 89%)',
+    'tertiary-color': 'hsl(6, 27%, 75%)',
+    'background-color': 'hsl(32, 50%, 77%)',
+    'background-color-dark': 'hsl(23, 40%, 39%)',
+    'text-color': 'hsl(6, 27%, 15%)',
+    'text-outline': 'hsl(345, 7%, 89%)',
   },
   'Forest': {
     'primary-color': 'hsl(60, 63%, 89%)',
@@ -27,7 +27,7 @@ export const themes : { [theme: string]: { [key: string]: string } } = {
     'background-color': 'hsl(227, 8%, 22%)',
     'background-color-dark': 'hsl(227, 8%, 18%)',
     'text-color': 'hsl(0, 0%, 100%)',
-    'text-outline': 'hsl(26, 62%, 18%)'
+    'text-outline': 'hsl(227, 8%, 32%)'
   }
 };
 

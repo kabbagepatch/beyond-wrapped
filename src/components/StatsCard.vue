@@ -85,7 +85,7 @@ const emit = defineEmits<{
 
 .entry a:hover {
   background-color: hsla(227, 8%, 22%, 5%);
-  color: hsl(227, 8%, 42%);
+  color: var(--background-color-dark);
 }
 
 .first-entry {

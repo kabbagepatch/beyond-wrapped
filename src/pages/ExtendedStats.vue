@@ -60,7 +60,7 @@ const goToSettings = () => {
 }
 
 a {
-  color: var(--tertiary-color)
+  color: hsl(227, 96%, 69%);
 }
 
 button {

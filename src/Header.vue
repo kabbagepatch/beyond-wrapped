@@ -68,7 +68,7 @@ const onRightButtonClick = () => {
   display: flex;
   align-items: center;
   margin-top: -5px;
-  margin-bottom: 5px;
+  margin-bottom: 10px;
 }
 
 .header .icon {
@@ -81,6 +81,7 @@ const onRightButtonClick = () => {
 .header .title {
   margin: 0;
   font-size: 30px;
+  color: var(--text-color);
 }
 
 .header .right-button {

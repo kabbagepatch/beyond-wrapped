@@ -88,20 +88,17 @@ invokeProcessing();
   justify-content: space-between;
 }
 
-h1, button, .h1 {
-  font-family: Pixels, Inter, Avenir, Helvetica, Arial, sans-serif;
-  text-shadow: -1.5px -1.5px 0 var(--text-outline), 1.5px -1.5px 0 var(--text-outline), -1.5px 1.5px 0 var(--text-outline), 1.5px 1.5px 0 var(--text-outline);
-  color: var(--text-color);
-}
-
-h1 {
+h1, .h1 {
   margin: 0;
   margin-bottom: 10px;
   font-size: 28px;
   width: 100%;
+  color: var(--text-outline);
+  font-family: Pixels, Inter, Avenir, Helvetica, Arial, sans-serif;
 }
 
 button {
+  font-family: Pixels, Inter, Avenir, Helvetica, Arial, sans-serif;
   font-size: 24px;
   display: block;
   margin: 0;
@@ -110,6 +107,7 @@ button {
   border: none;
   background: none;
   outline: none;
+  color: var(--text-color);
 }
 
 a {

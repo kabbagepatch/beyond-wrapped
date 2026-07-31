@@ -35,6 +35,10 @@ button {
   height: 24px;
 }
 
+.title {
+  color: var(--primary-color)
+}
+
 .title-selected {
   background-color: var(--background-color-dark);
 }

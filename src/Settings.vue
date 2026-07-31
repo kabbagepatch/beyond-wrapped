@@ -94,6 +94,7 @@ button, label {
   align-items: center;
   border-radius: 12px;
   background-color: var(--primary-color);
+  text-shadow: -1.5px -1.5px 0 var(--text-outline), 1.5px -1.5px 0 var(--text-outline), -1.5px 1.5px 0 var(--text-outline), 1.5px 1.5px 0 var(--text-outline);
 }
 
 .icon {
