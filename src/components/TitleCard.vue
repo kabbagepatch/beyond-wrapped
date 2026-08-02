@@ -62,4 +62,8 @@ defineProps<{
   text-shadow: none;
   color: var(--background-color);
 }
+
+.subtitle div {
+  margin: 5px 0;
+}
 </style>

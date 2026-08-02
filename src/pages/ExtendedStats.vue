@@ -50,13 +50,9 @@ const goToSettings = () => {
 </script>
 
 <style scoped>
-.header {
-  margin-bottom: 10px;
-}
-
 .description {
   padding: 0 4px;
-  margin-bottom: 10px;
+  margin-top: -15px;
 }
 
 a {

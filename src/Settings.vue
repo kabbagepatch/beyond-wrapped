@@ -15,10 +15,15 @@
           iconName="cells"
           :subtitles="[
             'Upload a zip file containing the Spotify Extended Streaming History folder',
-            `Last Uploaded: ${lastUpload}`
+            'Note: This will delete and replace your existing data',
+            `Last Uploaded: ${lastUpload}`,
           ]"
         />
       </button>
+      <div class="status alert" v-if="status === 'in-progress'">Upload in Progress. Do not leave this page</div>
+      <div class="status" v-if="status === 'uploaded'">Upload complete. Processing...</div>
+      <div class="status" v-if="status === 'complete'">Processing complete.</div>
+      <div class="status alert" v-if="status === 'error'">Upload failed</div>
     </div>
   </main>
 </template>
@@ -48,6 +53,7 @@ const toggleTheme = () => {
 }
 
 const lastUpload = ref('Never');
+const status = ref('init');
 const getLastUpload = async () => {
   const store = await tauristore.load('store.json');
   const lastUploadValue = await store.get<number>('last-upload-history');
@@ -65,14 +71,18 @@ const uploadZip = async (_: Event) => {
 
   if (selected) {
     lastUpload.value = 'Upload in progress...';
+    status.value = 'in-progress';
     try {
-      const response = await invoke('process_zip_file', { filePath: selected });
-      console.log(response);
+      await invoke('process_zip_file', { filePath: selected });
+      await getLastUpload();
+      status.value = 'uploaded';
+      await invoke('process_raw_history');
+      status.value = 'complete';
     } catch (e) {
+      console.error(e);
+      status.value = 'error';
       lastUpload.value = 'There was an error during the upload';
     }
-    getLastUpload();
-    invoke('process_raw_history');
   }
 }
 
@@ -95,6 +105,7 @@ button, label {
   border-radius: 12px;
   background-color: var(--primary-color);
   text-shadow: -1.5px -1.5px 0 var(--text-outline), 1.5px -1.5px 0 var(--text-outline), -1.5px 1.5px 0 var(--text-outline), 1.5px 1.5px 0 var(--text-outline);
+  padding: 5px 0;
 }
 
 .icon {
@@ -104,5 +115,17 @@ button, label {
 
 .file-upload {
   cursor: pointer;
+}
+
+.status {
+  width: 100%;
+  text-align: center;
+  margin-top: 15px;
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.alert {
+  color: rgb(255, 84, 84);
 }
 </style>

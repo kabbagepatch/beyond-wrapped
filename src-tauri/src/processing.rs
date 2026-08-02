@@ -1,15 +1,119 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, sync::Mutex};
 
 use chrono::{DateTime, Datelike, Local};
+use rusqlite::{Connection};
+use tauri::{AppHandle, Manager};
 use tauri_plugin_store::StoreExt;
 
 use crate::{
-    AppError, 
-    file::{
-        create_stats_dir, get_full_stats, get_months_dir_names, get_raw_track_data, get_saved_processed_data, get_years_dir_names, rename_temp_file, save_full_stats, save_processed_data
+    AppError::{self}, db::connection::{execute, query_row}, file::{
+        create_stats_dir,
+        get_full_stats,
+        get_months_dir_names,
+        get_raw_track_data,
+        get_saved_processed_data,
+        get_years_dir_names,
+        rename_temp_file,
+        save_full_stats,
+        save_processed_data,
+    }, models::{
+        Entry,
+        EntryStats,
+        FullAlbumStats,
+        FullArtistStats,
+        FullTrackStats,
+        MonthlyStats,
+        RawFile,
+        TrackPlay,
+        TrackStats,
+        YearlyStats,
     },
-    models::{Entry, EntryStats, FullAlbumStats, FullArtistStats, FullTrackStats, MonthlyStats, TrackPlay, TrackStats, YearlyStats}
 };
+
+pub fn process_raw_history_file(app: &AppHandle, filepath: &PathBuf) -> Result<(), AppError> {
+    let file_name = filepath.file_name().unwrap().to_string_lossy();
+    println!("Processing {}", file_name);
+
+    let conn = app.state::<Mutex<Connection>>();
+    let mut conn = conn.lock().unwrap();
+
+    let sql = "SELECT * FROM extended_history_files where filename = ?1";
+    let file_info = query_row(&conn, sql, [file_name.to_lowercase()], |row| {
+        Ok(RawFile { filename: row.get(0)?, processed_at: row.get(1)? })
+    })?;
+    match file_info {
+        Some(info) => {
+            if info.processed_at.is_some() {
+                println!("{} already processed", file_name);
+                return Ok(());
+            }
+        }
+        None => {
+            println!("Inserting {}", file_name);
+            let sql = "INSERT INTO extended_history_files (filename) VALUES (?1)";
+            execute(&conn, sql, (file_name.to_lowercase(),))?;
+        }
+    }
+
+    let raw_data = match get_raw_track_data(filepath.as_path()) {
+        Ok(c) => c,
+        Err(err) => {
+            eprintln!("Failed to read {}: {}", file_name, err);
+            return Ok(());
+        }
+    };
+
+    let mut i = 0;
+    eprintln!("Number of entries read: {}", raw_data.len());
+    let transaction = conn.transaction()?;
+    for entry in raw_data {
+        if entry.ms_played < 30000 {
+            continue;
+        }
+
+        transaction.execute(
+            "INSERT INTO artists (name) VALUES (?1) ON CONFLICT(name) DO NOTHING;",
+            [entry.track.clone().artist_name]
+        )?;
+        transaction.execute(
+            "INSERT INTO albums (name, artist) VALUES (?1, ?2) ON CONFLICT(name, artist) DO NOTHING;",
+            [
+                entry.track.clone().album_name,
+                entry.track.clone().artist_name
+            ]
+        )?;
+        transaction.execute(
+            "
+                INSERT INTO tracks (spotify_id, name, artist, album) 
+                VALUES (?1, ?2, ?3, ?4)
+                ON CONFLICT(spotify_id) DO NOTHING;
+            ",
+            [
+                entry.track.clone().id,
+                entry.track.clone().track_name,
+                entry.track.clone().artist_name,
+                entry.track.clone().album_name
+            ]
+        )?;
+        transaction.execute(
+            "INSERT INTO plays (track_id, time_stamp, ms_played) VALUES (?1, ?2, ?3)",
+            [
+                entry.track.clone().id,
+                entry.clone().time_stamp,
+                entry.ms_played.to_string()
+            ]
+        )?;
+        i += 1;
+    }
+
+    let sql = "UPDATE extended_history_files SET processed_at = CURRENT_TIMESTAMP WHERE filename = ?1";
+    transaction.execute(sql, (file_name.to_lowercase(),))?;
+
+    transaction.commit()?;
+    eprintln!("Number of entries saved: {}", i);
+
+    Ok(())
+}
 
 pub fn process_raw_history_files(app: &tauri::AppHandle, raw_json_files: &Vec<PathBuf>) -> Result<(), AppError> {
     let store = app.store("store.json")?;
@@ -19,7 +123,10 @@ pub fn process_raw_history_files(app: &tauri::AppHandle, raw_json_files: &Vec<Pa
 
     for raw_entry in raw_json_files {
         let file_name = raw_entry.file_name().unwrap().to_string_lossy();
-        let status: String = store.get(file_name.to_lowercase()).and_then(|v| v.as_str().map(str::to_owned)).unwrap_or("unknown".to_owned());
+        let status: String = store
+            .get(file_name.to_lowercase())
+            .and_then(|v| v.as_str().map(str::to_owned))
+            .unwrap_or("unknown".to_owned());
         if status == "processed" {
             continue;
         }
@@ -58,17 +165,27 @@ pub fn process_raw_history_files(app: &tauri::AppHandle, raw_json_files: &Vec<Pa
                 .or_insert_with(|| {
                     create_stats_dir(&app, year, Some(month)).unwrap();
 
-                    get_saved_processed_data(&app, year, Some(month), "track_stats.json").unwrap_or_else(|_| EntryStats::new())
+                    get_saved_processed_data(&app, year, Some(month), "track_stats.json")
+                         .unwrap_or_else(|_| EntryStats::new())
                 });
             let track_key = format!("{} - {}", entry.track.track_name, entry.track.artist_name);
-            let track_entry = track_stats.entry(track_key.clone()).or_insert(Entry { ms_played: 0, play_count: 0 });
+            let track_entry = track_stats.entry(track_key.clone()).or_insert(Entry {
+                ms_played: 0,
+                play_count: 0,
+            });
             track_entry.play_count += 1;
             track_entry.ms_played += entry.ms_played;
 
             let full_track_stat: &mut TrackStats = full_track_stats
                 .entry(track_key.clone())
-                .or_insert(TrackStats { info: entry.track.clone(), plays: Vec::new() });
-            full_track_stat.plays.push(TrackPlay { time_stamp: entry.time_stamp.clone(), ms_played: entry.ms_played });
+                .or_insert(TrackStats {
+                    info: entry.track.clone(),
+                    plays: Vec::new(),
+                });
+            full_track_stat.plays.push(TrackPlay {
+                time_stamp: entry.time_stamp.clone(),
+                ms_played: entry.ms_played,
+            });
 
             /* Artist Stats */
             let artist_stats: &mut EntryStats = yearly_artist_stats
@@ -76,10 +193,14 @@ pub fn process_raw_history_files(app: &tauri::AppHandle, raw_json_files: &Vec<Pa
                 .or_insert_with(MonthlyStats::new)
                 .entry(month)
                 .or_insert_with(|| {
-                    get_saved_processed_data(&app, year, Some(month), "artist_stats.json").unwrap_or_else(|_| EntryStats::new())
+                    get_saved_processed_data(&app, year, Some(month), "artist_stats.json")
+                        .unwrap_or_else(|_| EntryStats::new())
                 });
             let artist_key = format!("{}", entry.track.clone().artist_name);
-            let artist_entry = artist_stats.entry(artist_key.clone()).or_insert(Entry { ms_played: 0, play_count: 0 });
+            let artist_entry = artist_stats.entry(artist_key.clone()).or_insert(Entry {
+                ms_played: 0,
+                play_count: 0,
+            });
             artist_entry.play_count += 1;
             artist_entry.ms_played += entry.ms_played;
 
@@ -87,8 +208,14 @@ pub fn process_raw_history_files(app: &tauri::AppHandle, raw_json_files: &Vec<Pa
                 .entry(artist_key)
                 .or_insert_with(HashMap::new)
                 .entry(track_key.clone())
-                .or_insert(TrackStats { info: entry.track.clone(), plays: Vec::new() });
-            full_artist_stat.plays.push(TrackPlay { time_stamp: entry.time_stamp.clone(), ms_played: entry.ms_played });
+                .or_insert(TrackStats {
+                    info: entry.track.clone(),
+                    plays: Vec::new(),
+                });
+            full_artist_stat.plays.push(TrackPlay {
+                time_stamp: entry.time_stamp.clone(),
+                ms_played: entry.ms_played,
+            });
 
             /* Album Stats */
             let album_stats: &mut EntryStats = yearly_album_stats
@@ -96,10 +223,14 @@ pub fn process_raw_history_files(app: &tauri::AppHandle, raw_json_files: &Vec<Pa
                 .or_insert_with(MonthlyStats::new)
                 .entry(month)
                 .or_insert_with(|| {
-                    get_saved_processed_data(&app, year, Some(month), "album_stats.json").unwrap_or_else(|_| EntryStats::new())
+                    get_saved_processed_data(&app, year, Some(month), "album_stats.json")
+                        .unwrap_or_else(|_| EntryStats::new())
                 });
             let album_key = format!("{} - {}", entry.track.album_name, entry.track.artist_name);
-            let album_entry = album_stats.entry(album_key.clone()).or_insert(Entry { ms_played: 0, play_count: 0 });
+            let album_entry = album_stats.entry(album_key.clone()).or_insert(Entry {
+                ms_played: 0,
+                play_count: 0,
+            });
             album_entry.play_count += 1;
             album_entry.ms_played += entry.ms_played;
 
@@ -107,27 +238,41 @@ pub fn process_raw_history_files(app: &tauri::AppHandle, raw_json_files: &Vec<Pa
                 .entry(album_key)
                 .or_insert_with(HashMap::new)
                 .entry(track_key)
-                .or_insert(TrackStats { info: entry.track, plays: Vec::new() });
-            full_album_stat.plays.push(TrackPlay { time_stamp: entry.time_stamp, ms_played: entry.ms_played });
-            
+                .or_insert(TrackStats {
+                    info: entry.track,
+                    plays: Vec::new(),
+                });
+            full_album_stat.plays.push(TrackPlay {
+                time_stamp: entry.time_stamp,
+                ms_played: entry.ms_played,
+            });
+
             /* Daily/Monthly Stats */
             let per_day_stats: &mut EntryStats = yearly_per_day_stats
                 .entry(year)
                 .or_insert_with(MonthlyStats::new)
                 .entry(month)
                 .or_insert_with(|| {
-                    get_saved_processed_data(&app, year, Some(month), "per_day_stats.json").unwrap_or_else(|_| EntryStats::new())
+                    get_saved_processed_data(&app, year, Some(month), "per_day_stats.json")
+                        .unwrap_or_else(|_| EntryStats::new())
                 });
-            let per_day_entry = per_day_stats.entry(day.to_string()).or_insert(Entry { ms_played: 0, play_count: 0 });
+            let per_day_entry = per_day_stats.entry(day.to_string()).or_insert(Entry {
+                ms_played: 0,
+                play_count: 0,
+            });
             per_day_entry.play_count += 1;
             per_day_entry.ms_played += entry.ms_played;
-            
+
             let per_month_stats: &mut EntryStats = yearly_per_month_stats
                 .entry(year as u32)
                 .or_insert_with(|| {
-                    get_saved_processed_data(&app, year, None, "per_month_stats.json").unwrap_or_else(|_| EntryStats::new())
+                    get_saved_processed_data(&app, year, None, "per_month_stats.json")
+                        .unwrap_or_else(|_| EntryStats::new())
                 });
-            let per_month_entry = per_month_stats.entry(month.to_string()).or_insert(Entry { ms_played: 0, play_count: 0 });
+            let per_month_entry = per_month_stats.entry(month.to_string()).or_insert(Entry {
+                ms_played: 0,
+                play_count: 0,
+            });
             per_month_entry.play_count += 1;
             per_month_entry.ms_played += entry.ms_played;
         }
@@ -145,7 +290,13 @@ pub fn process_raw_history_files(app: &tauri::AppHandle, raw_json_files: &Vec<Pa
             }
         }
         for (year, per_month_stats) in yearly_per_month_stats {
-            save_processed_data(&app, year as i32, None, "per_month_stats.json.tmp", &per_month_stats);
+            save_processed_data(
+                &app,
+                year as i32,
+                None,
+                "per_month_stats.json.tmp",
+                &per_month_stats,
+            );
         }
         save_full_stats(app, "full_track_stats.json.tmp", &full_track_stats)?;
         save_full_stats(app, "full_artist_stats.json.tmp", &full_artist_stats)?;
@@ -176,7 +327,10 @@ pub fn process_top_items(app: &tauri::AppHandle) -> Result<(), AppError> {
     let store = app.store("store.json")?;
 
     for year in get_years_dir_names(app)? {
-        let status: String = store.get(format!("{}-top-items", year)).and_then(|v| v.as_str().map(str::to_owned)).unwrap_or("unknown".to_owned());
+        let status: String = store
+            .get(format!("{}-top-items", year))
+            .and_then(|v| v.as_str().map(str::to_owned))
+            .unwrap_or("unknown".to_owned());
         if status == "processed" {
             continue;
         }
@@ -193,31 +347,52 @@ pub fn process_top_items(app: &tauri::AppHandle) -> Result<(), AppError> {
             };
             for month in month_dirs {
                 let mut montly_aggregate: HashMap<String, Entry> = HashMap::new();
-                let item_stats = match get_saved_processed_data(&app, year, Some(month), &format!("{}_stats.json", item)) {
+                let item_stats = match get_saved_processed_data(
+                    &app,
+                    year,
+                    Some(month),
+                    &format!("{}_stats.json", item),
+                ) {
                     Ok(c) => c,
-                    Err(_) => { continue; }
+                    Err(_) => {
+                        continue;
+                    }
                 };
                 for (key, entry) in item_stats {
-                    let existing_entry = yearly_aggregate.entry(key.clone()).or_insert(Entry { ms_played: 0, play_count: 0 });
+                    let existing_entry = yearly_aggregate.entry(key.clone()).or_insert(Entry {
+                        ms_played: 0,
+                        play_count: 0,
+                    });
                     existing_entry.play_count += entry.play_count;
                     existing_entry.ms_played += entry.ms_played;
-                    
-                    let existing_entry = montly_aggregate.entry(key).or_insert(Entry { ms_played: 0, play_count: 0 });
+
+                    let existing_entry = montly_aggregate.entry(key).or_insert(Entry {
+                        ms_played: 0,
+                        play_count: 0,
+                    });
                     existing_entry.play_count += entry.play_count;
                     existing_entry.ms_played += entry.ms_played;
                 }
                 let mut sorted_items: Vec<(&String, &Entry)> = montly_aggregate.iter().collect();
-                sorted_items.sort_by(|a, b| {
-                    b.1.play_count.cmp(&a.1.play_count)
-                });
-                save_processed_data(app, year, Some(month), &format!("top_{}s.json.tmp", item), &sorted_items);
+                sorted_items.sort_by(|a, b| b.1.play_count.cmp(&a.1.play_count));
+                save_processed_data(
+                    app,
+                    year,
+                    Some(month),
+                    &format!("top_{}s.json.tmp", item),
+                    &sorted_items,
+                );
             }
             if item != "per_day" {
                 let mut sorted_items: Vec<(&String, &Entry)> = yearly_aggregate.iter().collect();
-                sorted_items.sort_by(|a, b| {
-                    b.1.play_count.cmp(&a.1.play_count)
-                });
-                save_processed_data(app, year, None, &format!("top_{}s.json.tmp", item), &sorted_items);
+                sorted_items.sort_by(|a, b| b.1.play_count.cmp(&a.1.play_count));
+                save_processed_data(
+                    app,
+                    year,
+                    None,
+                    &format!("top_{}s.json.tmp", item),
+                    &sorted_items,
+                );
             }
         }
 
@@ -230,7 +405,12 @@ pub fn process_top_items(app: &tauri::AppHandle) -> Result<(), AppError> {
                 }
             };
             for month in month_dirs {
-                rename_temp_file(&app, Some(year), Some(month), &format!("top_{}s.json", item));
+                rename_temp_file(
+                    &app,
+                    Some(year),
+                    Some(month),
+                    &format!("top_{}s.json", item),
+                );
             }
             if item != "per_day" {
                 rename_temp_file(&app, Some(year), None, &format!("top_{}s.json", item));

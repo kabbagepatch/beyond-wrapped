@@ -29,5 +29,10 @@
       "icons/128x128.png",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "sql": {
+      "preload": ["sqlite:test.db"]
+    }
   }
 }

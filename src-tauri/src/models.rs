@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RawTrackData {
-  pub spotify_track_uri: Option<String>,
-  pub master_metadata_track_name: Option<String>,
-  pub master_metadata_album_artist_name: Option<String>,
-  pub master_metadata_album_album_name: Option<String>,
-  pub ts: Option<String>,
-  pub ms_played: Option<i32>,
+    pub spotify_track_uri: Option<String>,
+    pub master_metadata_track_name: Option<String>,
+    pub master_metadata_album_artist_name: Option<String>,
+    pub master_metadata_album_album_name: Option<String>,
+    pub ts: Option<String>,
+    pub ms_played: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,3 +51,9 @@ pub struct TrackStats {
 pub type FullTrackStats = HashMap<String, TrackStats>;
 pub type FullArtistStats = HashMap<String, FullTrackStats>;
 pub type FullAlbumStats = HashMap<String, FullTrackStats>;
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RawFile {
+  pub filename: String,
+  pub processed_at: Option<String>,
+}

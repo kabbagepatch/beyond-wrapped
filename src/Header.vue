@@ -64,11 +64,13 @@ const onRightButtonClick = () => {
 
 <style scoped>
 .header {
-  width: var(--width);
+  min-width: var(--width);
   display: flex;
   align-items: center;
-  margin-top: -5px;
+  margin: -20px;
   margin-bottom: 10px;
+  background-color: var(--background-color-dark);
+  padding: 15px 20px;
 }
 
 .header .icon {
