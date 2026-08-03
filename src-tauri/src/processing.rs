@@ -36,14 +36,18 @@ pub fn process_raw_history_file(app: &AppHandle, filepath: &PathBuf) -> Result<(
     let conn = app.state::<Mutex<Connection>>();
     let mut conn = conn.lock().unwrap();
 
-    let sql = "SELECT * FROM extended_history_files where content_hash = ?1";
+    let sql = "SELECT content_hash, filename, processed_at FROM extended_history_files where content_hash = ?1";
     let file_info = query_row(&conn, sql, [content_hash.clone()], |row| {
         Ok(RawFile { content_hash: row.get(0)?, filename: row.get(1)?, processed_at: row.get(2)? })
     })?;
-    match file_info.clone() {
+    let file_name = file_info
+        .as_ref()
+        .and_then(|info| info.filename.clone())
+        .unwrap_or_else(|| content_hash.to_string());
+    match &file_info {
         Some(info) => {
             if info.processed_at.is_some() {
-                println!("{} already processed", info.filename.unwrap());
+                println!("{} already processed", file_name);
                 return Ok(());
             }
         }
@@ -53,10 +57,6 @@ pub fn process_raw_history_file(app: &AppHandle, filepath: &PathBuf) -> Result<(
         }
     }
 
-    let file_name = file_info
-        .unwrap_or(RawFile { content_hash: content_hash.to_string(), filename: None, processed_at: None })
-        .filename
-        .unwrap_or(content_hash.to_string());
     println!("Processing {}", file_name);
     let raw_data = match get_raw_track_data(filepath.as_path()) {
         Ok(c) => c,
@@ -107,7 +107,7 @@ pub fn process_raw_history_file(app: &AppHandle, filepath: &PathBuf) -> Result<(
             params![
                 entry.track.clone().id,
                 entry.clone().time_stamp,
-                entry.ms_played.to_string()
+                entry.ms_played
             ]
         )?;
         i += 1;

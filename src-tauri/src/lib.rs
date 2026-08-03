@@ -60,14 +60,17 @@ async fn process_zip_file(app: AppHandle, file_path: String) -> Result<String, A
     println!("Received file path: {}", file_path);
     let store = app.store("store.json")?;
     store.set("full-history-processed", false);
-    store.set("last-upload-history", SystemTime::now().duration_since(UNIX_EPOCH).expect("bad").as_millis() as u64);
     store.save()?;
     
     let result = spawn_blocking(move || -> Result<String, AppError> {
+        remove_incoming_dir(&app)?;
+
         let conn = app.state::<Mutex<Connection>>();
-        let conn = conn.lock().unwrap();
+        let mut conn = conn.lock().unwrap();
+        let transaction = conn.transaction()?;
         let file = File::open(&file_path)?;
         let mut archive = ZipArchive::new(file)?;
+        let mut saved = 0;
         for i in 0..archive.len() {
             let mut file = archive.by_index(i)?;
             if file.is_file() {
@@ -82,7 +85,6 @@ async fn process_zip_file(app: AppHandle, file_path: String) -> Result<String, A
 
                     if let Err(e) = save_raw_track_data(&app, &content_hash, &data) {
                         eprintln!("Error saving {} to raw history: {}", file_name, e);
-                        remove_incoming_dir(&app)?;
                         return Err(MyError("There was an error processing the zip file".to_string()));
                     }
                     let sql = "
@@ -90,19 +92,26 @@ async fn process_zip_file(app: AppHandle, file_path: String) -> Result<String, A
                         VALUES (?1, ?2)
                         ON CONFLICT(content_hash) DO NOTHING;
                     ";
-                    if let Err(_) = execute(&conn, sql, [content_hash, file_name]) {
-                        remove_incoming_dir(&app)?;
-                        return Err(MyError("There was an error processing the zip file".to_string()));
-                    }
+                    execute(&transaction, sql, [content_hash, file_name])?;
+                    saved += 1;
                 }
             }
         }
+        if saved == 0 {
+            return Err(MyError("No listening history was found in that archive".to_string()));
+        }
+
         rename_raw_dir(&app)?;
         rename_incoming_dir(&app)?;
+        transaction.commit()?;
+
+        let store = app.store("store.json")?;
+        store.set("last-upload-history", SystemTime::now().duration_since(UNIX_EPOCH).expect("bad").as_millis() as u64);
+        store.save()?;
 
         Ok::<_, AppError>(format!(
             "Successfully read {} files from archive",
-            archive.len()
+            saved
         ))
     })
     .await

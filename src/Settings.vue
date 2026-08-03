@@ -19,7 +19,7 @@
           ]"
         />
       </button>
-      <div class="status alert" v-if="status === 'in-progress'">Upload in Progress. Do not leave this page</div>
+      <div class="status alert" v-if="status === 'in-progress'">Upload in Progress. Do not close application</div>
       <div class="status" v-if="status === 'uploaded'">Upload complete. Processing...</div>
       <div class="status" v-if="status === 'complete'">Processing complete.</div>
       <div class="status alert" v-if="status === 'error'">Upload failed</div>
