@@ -13,18 +13,21 @@ CREATE TABLE IF NOT EXISTS tracks (
   name        TEXT NOT NULL,
   artist      TEXT NOT NULL,
   album       TEXT NOT NULL,
-  play_count  INTEGER NOT NULL DEFAULT 0,
   FOREIGN KEY (album, artist) REFERENCES albums(name, artist)
 );
 CREATE TABLE IF NOT EXISTS plays (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  track_id    TEXT REFERENCES tracks(spotify_id),
+  track_id    TEXT NOT NULL REFERENCES tracks(spotify_id),
   time_stamp  TEXT NOT NULL,
-  ms_played   INTEGER NOT NULL
+  ms_played   INTEGER NOT NULL,
+  UNIQUE(track_id, time_stamp)
 );
 CREATE TABLE IF NOT EXISTS extended_history_files (
-  filename     TEXT PRIMARY KEY,
+  content_hash TEXT PRIMARY KEY,
+  filename     TEXT,
   processed_at TEXT
 );
+CREATE INDEX IF NOT EXISTS idx_plays_track ON plays(track_id);
+CREATE INDEX IF NOT EXISTS idx_plays_timestamp ON plays(time_stamp);
 COMMIT;
 "#;

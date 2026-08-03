@@ -54,6 +54,7 @@ pub type FullAlbumStats = HashMap<String, FullTrackStats>;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RawFile {
-  pub filename: String,
-  pub processed_at: Option<String>,
+    pub content_hash: String,
+    pub filename: Option<String>,
+    pub processed_at: Option<String>,
 }

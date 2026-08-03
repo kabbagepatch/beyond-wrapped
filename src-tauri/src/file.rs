@@ -10,6 +10,8 @@ use tauri::{Error, Manager};
 use crate::models::{EntryStats, RawTrackData, TrackData, TrackEntryData};
 
 const RAW_HISTORY: &str = "raw_history";
+const RAW_HISTORY_INCOMING: &str = "raw_history.incoming";
+const RAW_HISTORY_BACKUP: &str = "raw_history.back";
 const PROCESSED_HISTORY: &str = "processed_history";
 
 pub fn get_raw_history_files(app: &tauri::AppHandle) -> Result<Vec<PathBuf>, Error> {
@@ -17,7 +19,6 @@ pub fn get_raw_history_files(app: &tauri::AppHandle) -> Result<Vec<PathBuf>, Err
     let raw_json_files = fs::read_dir(raw_history_dir)?
         .filter_map(|entry| entry.ok())
         .map(|entry| entry.path())
-        .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("json"))
         .collect();
 
     Ok(raw_json_files)
@@ -50,7 +51,7 @@ pub fn save_raw_track_data(
     file_name: &str,
     data: &Vec<RawTrackData>,
 ) -> Result<(), Error> {
-    let dir = app.path().app_data_dir()?.join(RAW_HISTORY);
+    let dir = app.path().app_data_dir()?.join(RAW_HISTORY_INCOMING);
     fs::create_dir_all(&dir)?;
     let json = serde_json::to_string_pretty(&data)?;
     let file_path = dir.join(&file_name);
@@ -59,10 +60,10 @@ pub fn save_raw_track_data(
     Ok(())
 }
 
-pub fn rename_dir(app: &tauri::AppHandle, dir_name: &str) -> Result<(), Error> {
+pub fn rename_dir(app: &tauri::AppHandle, from: &str, to: &str) -> Result<(), Error> {
     let base = app.path().app_data_dir().unwrap();
-    let temp_dir = base.join(format!("{}.tmp", dir_name));
-    let dir = base.join(dir_name);
+    let temp_dir = base.join(to);
+    let dir = base.join(from);
     if fs::exists(&temp_dir)? {
         fs::remove_dir_all(&temp_dir)?;
     }
@@ -73,8 +74,30 @@ pub fn rename_dir(app: &tauri::AppHandle, dir_name: &str) -> Result<(), Error> {
     Ok(())
 }
 
+pub fn remove_dir(app: &tauri::AppHandle, dir_name: &str) -> Result<(), Error> {
+    let base = app.path().app_data_dir().unwrap();
+    let dir = base.join(dir_name);
+    if fs::exists(&dir)? {
+        fs::remove_dir_all(&dir)?;
+    }
+
+    Ok(())
+}
+
+pub fn remove_incoming_dir(app: &tauri::AppHandle) -> Result<(), Error> {
+    remove_dir(app, RAW_HISTORY_INCOMING)
+}
+
+pub fn remove_backup_dir(app: &tauri::AppHandle) -> Result<(), Error> {
+    remove_dir(app, RAW_HISTORY_BACKUP)
+}
+
+pub fn rename_incoming_dir(app: &tauri::AppHandle) -> Result<(), Error> {
+    rename_dir(app, RAW_HISTORY_INCOMING, RAW_HISTORY)
+}
+
 pub fn rename_raw_dir(app: &tauri::AppHandle) -> Result<(), Error> {
-    rename_dir(app, RAW_HISTORY)
+    rename_dir(app, RAW_HISTORY, RAW_HISTORY_BACKUP)
 }
 
 pub fn get_base_dir(app: &tauri::AppHandle, year: Option<i32>, month: Option<u32>) -> PathBuf {
@@ -91,7 +114,7 @@ pub fn get_base_dir(app: &tauri::AppHandle, year: Option<i32>, month: Option<u32
 }
 
 pub fn rename_processed_dir(app: &tauri::AppHandle) -> Result<(), Error> {
-    rename_dir(app, PROCESSED_HISTORY)
+    rename_dir(app, PROCESSED_HISTORY, RAW_HISTORY_INCOMING)
 }
 
 pub fn create_stats_dir(

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::PathBuf, sync::Mutex};
 
 use chrono::{DateTime, Datelike, Local};
-use rusqlite::{Connection};
+use rusqlite::{Connection, params};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_store::StoreExt;
 
@@ -31,30 +31,33 @@ use crate::{
 };
 
 pub fn process_raw_history_file(app: &AppHandle, filepath: &PathBuf) -> Result<(), AppError> {
-    let file_name = filepath.file_name().unwrap().to_string_lossy();
-    println!("Processing {}", file_name);
+    let content_hash = filepath.file_name().unwrap().to_string_lossy();
 
     let conn = app.state::<Mutex<Connection>>();
     let mut conn = conn.lock().unwrap();
 
-    let sql = "SELECT * FROM extended_history_files where filename = ?1";
-    let file_info = query_row(&conn, sql, [file_name.to_lowercase()], |row| {
-        Ok(RawFile { filename: row.get(0)?, processed_at: row.get(1)? })
+    let sql = "SELECT * FROM extended_history_files where content_hash = ?1";
+    let file_info = query_row(&conn, sql, [content_hash.clone()], |row| {
+        Ok(RawFile { content_hash: row.get(0)?, filename: row.get(1)?, processed_at: row.get(2)? })
     })?;
-    match file_info {
+    match file_info.clone() {
         Some(info) => {
             if info.processed_at.is_some() {
-                println!("{} already processed", file_name);
+                println!("{} already processed", info.filename.unwrap());
                 return Ok(());
             }
         }
         None => {
-            println!("Inserting {}", file_name);
-            let sql = "INSERT INTO extended_history_files (filename) VALUES (?1)";
-            execute(&conn, sql, (file_name.to_lowercase(),))?;
+            let sql = "INSERT INTO extended_history_files (content_hash) VALUES (?1)";
+            execute(&conn, sql, (content_hash.clone(),))?;
         }
     }
 
+    let file_name = file_info
+        .unwrap_or(RawFile { content_hash: content_hash.to_string(), filename: None, processed_at: None })
+        .filename
+        .unwrap_or(content_hash.to_string());
+    println!("Processing {}", file_name);
     let raw_data = match get_raw_track_data(filepath.as_path()) {
         Ok(c) => c,
         Err(err) => {
@@ -96,8 +99,12 @@ pub fn process_raw_history_file(app: &AppHandle, filepath: &PathBuf) -> Result<(
             ]
         )?;
         transaction.execute(
-            "INSERT INTO plays (track_id, time_stamp, ms_played) VALUES (?1, ?2, ?3)",
-            [
+            "
+                INSERT INTO plays (track_id, time_stamp, ms_played)
+                VALUES (?1, ?2, ?3)
+                ON CONFLICT(track_id, time_stamp) DO NOTHING;
+            ",
+            params![
                 entry.track.clone().id,
                 entry.clone().time_stamp,
                 entry.ms_played.to_string()
@@ -106,8 +113,8 @@ pub fn process_raw_history_file(app: &AppHandle, filepath: &PathBuf) -> Result<(
         i += 1;
     }
 
-    let sql = "UPDATE extended_history_files SET processed_at = CURRENT_TIMESTAMP WHERE filename = ?1";
-    transaction.execute(sql, (file_name.to_lowercase(),))?;
+    let sql = "UPDATE extended_history_files SET processed_at = CURRENT_TIMESTAMP WHERE content_hash = ?1";
+    transaction.execute(sql, (content_hash,))?;
 
     transaction.commit()?;
     eprintln!("Number of entries saved: {}", i);

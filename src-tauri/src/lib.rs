@@ -2,13 +2,14 @@ use std::{
     fs::File, io::Read, sync::Mutex, time::{SystemTime, UNIX_EPOCH}, vec,
 };
 use rusqlite::Connection;
+use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Manager};
 use tauri::async_runtime::spawn_blocking;
 use tauri_plugin_store::StoreExt;
 use zip::{result::ZipError, ZipArchive};
 
 use crate::{
-    AppError::MyError, db::connection::{backup_db, clear_db, execute, init_db}, file::{get_raw_history_files, rename_raw_dir, save_raw_track_data}, processing::{process_raw_history_file, process_raw_history_files, process_top_items},
+    AppError::MyError, db::connection::{execute, init_db}, file::{get_raw_history_files, remove_incoming_dir, rename_incoming_dir, rename_raw_dir, save_raw_track_data}, processing::{process_raw_history_file, process_raw_history_files, process_top_items},
 };
 
 mod file;
@@ -57,15 +58,12 @@ fn greet(name: &str) -> String {
 #[tauri::command]
 async fn process_zip_file(app: AppHandle, file_path: String) -> Result<String, AppError> {
     println!("Received file path: {}", file_path);
+    let store = app.store("store.json")?;
+    store.set("full-history-processed", false);
+    store.set("last-upload-history", SystemTime::now().duration_since(UNIX_EPOCH).expect("bad").as_millis() as u64);
+    store.save()?;
     
     let result = spawn_blocking(move || -> Result<String, AppError> {
-        backup_db(&app)?;
-        if let Err(e) = clear_db(&app) {
-            println!("Error clearing the database: {}", e);
-            return Err(MyError("There was an issue processing the history".to_string()))
-        }
-        rename_raw_dir(&app)?;
-
         let conn = app.state::<Mutex<Connection>>();
         let conn = conn.lock().unwrap();
         let file = File::open(&file_path)?;
@@ -79,25 +77,28 @@ async fn process_zip_file(app: AppHandle, file_path: String) -> Result<String, A
                     println!("Parsing {}", file_name);
                     let mut buf = Vec::new();
                     file.read_to_end(&mut buf)?;
+                    let content_hash = hex::encode(Sha256::digest(&buf));
                     let data: Vec<models::RawTrackData> = serde_json::from_slice(&buf)?;
 
-                    if let Err(e) = save_raw_track_data(&app, &file_name, &data) {
+                    if let Err(e) = save_raw_track_data(&app, &content_hash, &data) {
                         eprintln!("Error saving {} to raw history: {}", file_name, e);
-                        continue;
+                        remove_incoming_dir(&app)?;
+                        return Err(MyError("There was an error processing the zip file".to_string()));
                     }
-                    let sql = "INSERT INTO extended_history_files (filename) VALUES (?1)";
-                    if let Err(_) = execute(&conn, sql, (file_name.to_lowercase(),)) {
-                        continue;
+                    let sql = "
+                        INSERT INTO extended_history_files (content_hash, filename)
+                        VALUES (?1, ?2)
+                        ON CONFLICT(content_hash) DO NOTHING;
+                    ";
+                    if let Err(_) = execute(&conn, sql, [content_hash, file_name]) {
+                        remove_incoming_dir(&app)?;
+                        return Err(MyError("There was an error processing the zip file".to_string()));
                     }
                 }
             }
         }
-
-        let store = app.store("store.json")?;
-        store.set("full-history-processed", false);
-        store.set("last-upload-history", SystemTime::now().duration_since(UNIX_EPOCH).expect("bad").as_millis() as u64);
-        store.save()?;
-
+        rename_raw_dir(&app)?;
+        rename_incoming_dir(&app)?;
 
         Ok::<_, AppError>(format!(
             "Successfully read {} files from archive",

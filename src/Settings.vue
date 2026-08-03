@@ -15,7 +15,6 @@
           iconName="cells"
           :subtitles="[
             'Upload a zip file containing the Spotify Extended Streaming History folder',
-            'Note: This will delete and replace your existing data',
             `Last Uploaded: ${lastUpload}`,
           ]"
         />
