@@ -2,12 +2,13 @@
   <main class="container">
     <div class="home">
       <Header />
-      <button @click="toggleTheme">
-        <div class="theme-button">
-          <img class="icon" src="./assets/icons/paint-brush.png" />
-          <div class="theme-button-text">Toggle Theme</div>
-        </div>
-      </button>
+      <div class="description">
+        <p>
+          Spotify Wrapped feels so limited. Get a better insight into your listening history here.
+          Request your Extended Listening History from Spotify <a href="https://www.spotify.com/us/account/privacy/" target="_blank">here</a>.
+          Then upload the zip file you get from Spotify below. Wait for the processing and check out all your stats <a href="/">here</a>.
+        </p>
+      </div>
       
       <button @click="uploadZip">
         <title-card
@@ -24,6 +25,13 @@
       <div class="status" v-if="status === 'complete'">Processing complete.</div>
       <div class="status alert" v-if="status === 'error'">Upload failed</div>
     </div>
+      
+    <button @click="toggleTheme">
+      <div class="theme-button">
+        <img class="icon" src="./assets/icons/paint-brush.png" />
+        <div class="theme-button-text">Toggle Theme</div>
+      </div>
+    </button>
   </main>
 </template>
 
@@ -92,19 +100,28 @@ const uploadZip = async (_: Event) => {
   width: 100%;
 }
 
+.description {
+  padding: 0 4px;
+  margin-top: 10px;
+}
+
+a {
+  color: hsl(227, 96%, 69%);
+}
+
 button, label {
   display: block;
   margin-top: 20px;
 }
 
 .theme-button {
-  width: var(--width);
+  max-width: var(--width);
   display: flex;
   align-items: center;
   border-radius: 12px;
   background-color: var(--primary-color);
   text-shadow: -1.5px -1.5px 0 var(--text-outline), 1.5px -1.5px 0 var(--text-outline), -1.5px 1.5px 0 var(--text-outline), 1.5px 1.5px 0 var(--text-outline);
-  padding: 5px 0;
+  padding: 5px 10px;
 }
 
 .icon {

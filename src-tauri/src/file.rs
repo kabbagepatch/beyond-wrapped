@@ -88,10 +88,6 @@ pub fn remove_incoming_dir(app: &tauri::AppHandle) -> Result<(), Error> {
     remove_dir(app, RAW_HISTORY_INCOMING)
 }
 
-pub fn remove_backup_dir(app: &tauri::AppHandle) -> Result<(), Error> {
-    remove_dir(app, RAW_HISTORY_BACKUP)
-}
-
 pub fn rename_incoming_dir(app: &tauri::AppHandle) -> Result<(), Error> {
     rename_dir(app, RAW_HISTORY_INCOMING, RAW_HISTORY)
 }
@@ -111,10 +107,6 @@ pub fn get_base_dir(app: &tauri::AppHandle, year: Option<i32>, month: Option<u32
     }
 
     dir
-}
-
-pub fn rename_processed_dir(app: &tauri::AppHandle) -> Result<(), Error> {
-    rename_dir(app, PROCESSED_HISTORY, RAW_HISTORY_INCOMING)
 }
 
 pub fn create_stats_dir(

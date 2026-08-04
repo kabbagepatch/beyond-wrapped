@@ -1,13 +1,6 @@
 <template>
   <div class="container">
     <Header :rightButtonClick="goToSettings" />
-    <div class="description">
-      <p>
-        Spotify Wrapped feels so limited. Get a better insight into your listening history here.
-        Request your Extended Listening History from Spotify <a href="https://www.spotify.com/us/account/privacy/" target="_blank">here</a>.
-        Then head over to the Settings and upload the zip file you get from Spotify. And check out all the stats below.
-      </p>
-    </div>
     <button>
       <router-link to="/year/2025">
         <title-card
@@ -35,6 +28,15 @@
         />
       </router-link>
     </button>
+    <button>
+      <router-link to="/">
+        <title-card
+          title="Search"
+          iconName="calendar"
+          :subtitles="['Search for your favorite tracks or artists']"
+        />
+      </router-link>
+    </button>
   </div>
 </template>
 
@@ -50,14 +52,6 @@ const goToSettings = () => {
 </script>
 
 <style scoped>
-.description {
-  padding: 0 4px;
-  margin-top: -15px;
-}
-
-a {
-  color: hsl(227, 96%, 69%);
-}
 
 button {
   margin-top: 4px;

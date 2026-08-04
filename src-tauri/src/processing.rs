@@ -1,12 +1,14 @@
 use std::{collections::HashMap, path::PathBuf, sync::Mutex};
 
 use chrono::{DateTime, Datelike, Local};
-use rusqlite::{Connection, params};
+use rusqlite::{Connection};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_store::StoreExt;
 
 use crate::{
-    AppError::{self}, db::connection::{execute, query_row}, file::{
+    AppError::{self},
+    db::{queries::{get_extended_history_file_info, insert_album, insert_artist, insert_extended_history, insert_play, insert_track}},
+    file::{
         create_stats_dir,
         get_full_stats,
         get_months_dir_names,
@@ -23,7 +25,6 @@ use crate::{
         FullArtistStats,
         FullTrackStats,
         MonthlyStats,
-        RawFile,
         TrackPlay,
         TrackStats,
         YearlyStats,
@@ -34,12 +35,9 @@ pub fn process_raw_history_file(app: &AppHandle, filepath: &PathBuf) -> Result<(
     let content_hash = filepath.file_name().unwrap().to_string_lossy();
 
     let conn = app.state::<Mutex<Connection>>();
-    let mut conn = conn.lock().unwrap();
+    let mut conn = conn.lock().unwrap_or_else(|e| e.into_inner());
 
-    let sql = "SELECT content_hash, filename, processed_at FROM extended_history_files where content_hash = ?1";
-    let file_info = query_row(&conn, sql, [content_hash.clone()], |row| {
-        Ok(RawFile { content_hash: row.get(0)?, filename: row.get(1)?, processed_at: row.get(2)? })
-    })?;
+    let file_info = get_extended_history_file_info(&conn, &content_hash)?;
     let file_name = file_info
         .as_ref()
         .and_then(|info| info.filename.clone())
@@ -52,8 +50,7 @@ pub fn process_raw_history_file(app: &AppHandle, filepath: &PathBuf) -> Result<(
             }
         }
         None => {
-            let sql = "INSERT INTO extended_history_files (content_hash) VALUES (?1)";
-            execute(&conn, sql, (content_hash.clone(),))?;
+            insert_extended_history(&conn, &content_hash, None)?;
         }
     }
 
@@ -66,62 +63,28 @@ pub fn process_raw_history_file(app: &AppHandle, filepath: &PathBuf) -> Result<(
         }
     };
 
-    let mut i = 0;
-    eprintln!("Number of entries read: {}", raw_data.len());
     let transaction = conn.transaction()?;
     for entry in raw_data {
         if entry.ms_played < 30000 {
             continue;
         }
 
-        transaction.execute(
-            "INSERT INTO artists (name) VALUES (?1) ON CONFLICT(name) DO NOTHING;",
-            [entry.track.clone().artist_name]
-        )?;
-        transaction.execute(
-            "INSERT INTO albums (name, artist) VALUES (?1, ?2) ON CONFLICT(name, artist) DO NOTHING;",
-            [
-                entry.track.clone().album_name,
-                entry.track.clone().artist_name
-            ]
-        )?;
-        transaction.execute(
-            "
-                INSERT INTO tracks (spotify_id, name, artist, album) 
-                VALUES (?1, ?2, ?3, ?4)
-                ON CONFLICT(spotify_id) DO NOTHING;
-            ",
-            [
-                entry.track.clone().id,
-                entry.track.clone().track_name,
-                entry.track.clone().artist_name,
-                entry.track.clone().album_name
-            ]
-        )?;
-        transaction.execute(
-            "
-                INSERT INTO plays (track_id, time_stamp, ms_played)
-                VALUES (?1, ?2, ?3)
-                ON CONFLICT(track_id, time_stamp) DO NOTHING;
-            ",
-            params![
-                entry.track.clone().id,
-                entry.clone().time_stamp,
-                entry.ms_played
-            ]
-        )?;
-        i += 1;
+        insert_artist(&transaction, &entry)?;
+        insert_album(&transaction, &entry)?;
+        insert_track(&transaction, &entry)?;
+        insert_play(&transaction, &entry)?;
     }
 
     let sql = "UPDATE extended_history_files SET processed_at = CURRENT_TIMESTAMP WHERE content_hash = ?1";
     transaction.execute(sql, (content_hash,))?;
-
     transaction.commit()?;
-    eprintln!("Number of entries saved: {}", i);
 
     Ok(())
 }
 
+/* I worked hard on the code below. I feel bad deleting. But it is NOT used anywhere anymore. Pre-database data processing */
+
+#[allow(dead_code)]
 pub fn process_raw_history_files(app: &tauri::AppHandle, raw_json_files: &Vec<PathBuf>) -> Result<(), AppError> {
     let store = app.store("store.json")?;
     let mut full_track_stats: FullTrackStats = get_full_stats(app, "full_track_stats.json")?;
@@ -330,6 +293,7 @@ pub fn process_raw_history_files(app: &tauri::AppHandle, raw_json_files: &Vec<Pa
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn process_top_items(app: &tauri::AppHandle) -> Result<(), AppError> {
     let store = app.store("store.json")?;
 

@@ -58,3 +58,11 @@ pub struct RawFile {
     pub filename: Option<String>,
     pub processed_at: Option<String>,
 }
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct TrackCount {
+    pub primary: String,
+    pub secondary: Option<String>,
+    pub play_count: i32,
+    pub ms_played: i64,
+}

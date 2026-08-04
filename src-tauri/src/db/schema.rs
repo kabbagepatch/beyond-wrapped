@@ -29,5 +29,8 @@ CREATE TABLE IF NOT EXISTS extended_history_files (
 );
 CREATE INDEX IF NOT EXISTS idx_plays_track ON plays(track_id);
 CREATE INDEX IF NOT EXISTS idx_plays_timestamp ON plays(time_stamp);
+CREATE INDEX IF NOT EXISTS idx_tracks_name_artist ON tracks(name, artist);
+CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist);
+CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album, artist);
 COMMIT;
 "#;

@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core';
 import { BaseDirectory, readTextFile } from '@tauri-apps/plugin-fs';
 import { defineStore } from 'pinia'
 import { Ref, ref } from 'vue'
@@ -6,6 +7,17 @@ export interface TrackTotals { msPlayed: number; playCount: number; }
 export type TotalsList = [ string, TrackTotals ][];
 export interface YearlyTotals { [year: string]: TotalsList; }
 export interface MonthlyTotals { [year: string]: { [month: string]: TotalsList }; }
+
+type TrackCounts = { tracks?: TrackCount[], artists?: TrackCount[], albums?: TrackCount[] };
+export type YearlyTrackCount = { [year: number]: TrackCounts; };
+export type MonthlyTrackCount = { [year: number]: { [month: string]: TrackCounts } };
+
+export type TrackCount = {
+  primary: string;
+  secondary?: string;
+  playCount: number;
+  msPlayed: number;
+}
 
 export interface TrackData {
   id: string;
@@ -54,33 +66,6 @@ export interface AlbumStats {
     timePlayed?: string,
   }
 };
-
-const createTopItemLoader = (fileName: string, yearlyCache: Ref<YearlyTotals>, monthlyCache: Ref<MonthlyTotals>) => {
-  return async (year: string, month?: string) => {
-    try {
-      if (month) {
-        if (monthlyCache.value[year]?.[month]) {
-          return monthlyCache.value[year][month];
-        }
-        const module = await readTextFile(`processed_history/${year}/${month}/${fileName}`, { baseDir: BaseDirectory.AppData })
-        monthlyCache.value[year] ??= {};
-        monthlyCache.value[year][month] = JSON.parse(module).map(trasformEntry);
-        return monthlyCache.value[year][month];
-      }
-      
-      if (yearlyCache.value[year]) {
-        return yearlyCache.value[year];
-      }
-      const module = await readTextFile(`processed_history/${year}/${fileName}`, { baseDir: BaseDirectory.AppData });
-      yearlyCache.value[year] = JSON.parse(module).map(trasformEntry) as TotalsList;
-      return yearlyCache.value[year];
-    } catch (error) {
-      console.log(`Error loading ${fileName} for ${year}${month ? `/${month}` : ''}`);
-      console.log(error);
-      return [];
-    }
-  }
-}
 
 const createFullStatsLoader = (fileName: string, statsCache: Ref<ArtistStats | AlbumStats>, createBaseEntry: (key: string) => any) => {
   return async (key: string) => {
@@ -151,75 +136,71 @@ const trasformFullStats = (item: any) => {
 }
 
 export const useTrackerStore = defineStore('tracker', () => {
-  const yearlyTopTracks = ref<YearlyTotals>({});
-  const monthlyTopTracks = ref<MonthlyTotals>({});
-  const yearlyTopArtists = ref<YearlyTotals>({});
-  const monthlyTopArtists = ref<MonthlyTotals>({});
-  const yearlyTopAlbums = ref<YearlyTotals>({});
-  const monthlyTopAlbums = ref<MonthlyTotals>({});
-  const yearlyTopPerDays = ref<YearlyTotals>({});
-  const monthlyTopPerDays = ref<MonthlyTotals>({});
   const fullTrackStats = ref<TrackStats>({});
   const fullArtistStats = ref<ArtistStats>({});
   const fullAlbumStats = ref<AlbumStats>({});
+  const yearlyTotals = ref<YearlyTrackCount>({});
+  const monthlyTotals = ref<MonthlyTrackCount>({});
 
-  const getTopTracks = createTopItemLoader('top_tracks.json', yearlyTopTracks, monthlyTopTracks);
-  const getTopArtists = createTopItemLoader('top_artists.json', yearlyTopArtists, monthlyTopArtists);
-  const getTopAlbums = createTopItemLoader('top_albums.json', yearlyTopAlbums, monthlyTopAlbums);
-  const getTopDays = createTopItemLoader('top_days.json', yearlyTopPerDays, monthlyTopPerDays);
+  const getTopTracks = async (year: number, month?: number): Promise<TotalsList> => {
+    return getTopItems('tracks', year, month);
+  }
 
-  const getTopItems = async (type : 'tracks' | 'artists' | 'albums', from : string, to : string) => {
+  const getTopArtists = async (year: number, month?: number): Promise<TotalsList> => {
+    return getTopItems('artists', year, month);
+  }
+
+  const getTopAlbums = async (year: number, month?: number): Promise<TotalsList> => {
+    return getTopItems('albums', year, month);
+  }
+
+  const getTopItems = async (item : 'tracks' | 'artists' | 'albums', year: number, month?: number): Promise<TotalsList> => {
+    if (month) {
+      if (monthlyTotals.value[year]?.[month]?.[item]?.length) {
+        return monthlyTotals.value[year][month][item].map((i: any) => ([ i.primary + (i.secondary ? ` - ${i.secondary}` : ''), i ]));;
+      }
+    } else {
+      if (yearlyTotals.value[year]?.[item]?.length) {
+        return yearlyTotals.value[year][item].map((i: any) => ([ i.primary + (i.secondary ? ` - ${i.secondary}` : ''), i ]));;
+      }
+    }
+
+    const result: any = await invoke('get_top_items', { item, year, month });
+
+    const mapped = result.map((i: any) : TrackCount => ({
+      primary: i.primary,
+      secondary: i.secondary,
+      playCount: i.play_count,
+      msPlayed: i.ms_played,
+    }));
+
+    if (month) {
+      if (!monthlyTotals.value[year]) monthlyTotals.value[year] = {};
+      if (!monthlyTotals.value[year][month]) monthlyTotals.value[year][month] = {};
+      monthlyTotals.value[year][month][item] = mapped;
+    } else {
+      if (!yearlyTotals.value[year]) yearlyTotals.value[year] = {};
+      yearlyTotals.value[year][item] = mapped;
+    }
+
+    return mapped.map((i: any) => ([ i.primary + (i.secondary ? ` - ${i.secondary}` : ''), i ]));
+  }
+
+  const getTopItemsCustom = async (item : 'tracks' | 'artists' | 'albums', from : string, to : string): Promise<TotalsList> => {
     const fromParts = from.split('-');
     const fromMonth = parseInt(fromParts[0], 10);
     const fromYear = parseInt(fromParts[1], 10);
     const toParts = to.split('-');
     const toMonth = parseInt(toParts[0], 10);
     const toYear = parseInt(toParts[1], 10);
-    const combinedTotals: TotalsList = [];
+    const result: any = await invoke('get_top_items_custom', { item, fromYear, fromMonth, toYear, toMonth });
 
-    for (let year = fromYear; year <= toYear; year += 1) {
-      if (year > fromYear && year < toYear) {
-        let yearlyData;
-        switch(type) {
-          case 'artists': yearlyData = await getTopArtists(year.toString()); break;
-          case 'albums': yearlyData = await getTopAlbums(year.toString()); break;
-          default: yearlyData = await getTopTracks(year.toString()); break;
-        }
-        yearlyData.forEach(([trackKey, totals]) => {
-          const existingEntry = combinedTotals.find(entry => entry[0] === trackKey);
-          if (existingEntry) {
-            existingEntry[1].msPlayed += totals.msPlayed;
-            existingEntry[1].playCount += totals.playCount;
-          } else {
-            combinedTotals.push([trackKey, { msPlayed: totals.msPlayed, playCount: totals.playCount }]);
-          }
-        });
-        continue;
-      }
-
-      const startMonth = (year === fromYear) ? fromMonth : 1;
-      const endMonth = (year === toYear) ? toMonth : 12;
-      for (let month = startMonth; month <= endMonth; month += 1) {
-        let monthlyData;
-        switch(type) {
-          case 'artists': monthlyData = await getTopArtists(year.toString(), month.toString()); break;
-          case 'albums': monthlyData = await getTopAlbums(year.toString(), month.toString()); break;
-          default: monthlyData = await getTopTracks(year.toString(), month.toString()); break;
-        }
-        monthlyData.forEach(([trackKey, totals]) => {
-          const existingEntry = combinedTotals.find(entry => entry[0] === trackKey);
-          if (existingEntry) {
-            existingEntry[1].msPlayed += totals.msPlayed;
-            existingEntry[1].playCount += totals.playCount;
-          } else {
-            combinedTotals.push([trackKey, { msPlayed: totals.msPlayed, playCount: totals.playCount }]);
-          }
-        });
-      }
-    }
-
-    combinedTotals.sort((a, b) => b[1].playCount - a[1].playCount);
-    return combinedTotals;
+    return result.map((i: any) : TrackCount => ({
+      primary: i.primary,
+      secondary: i.secondary,
+      playCount: i.play_count,
+      msPlayed: i.ms_played,
+    })).map((i: any) => ([ i.primary + (i.secondary ? ` - ${i.secondary}` : ''), i ]));
   }
 
   const getTrackStats = async (trackKey: string) => {
@@ -271,10 +252,9 @@ export const useTrackerStore = defineStore('tracker', () => {
 
   return {
     getTopTracks,
-    getTopItems,
+    getTopItemsCustom,
     getTopArtists,
     getTopAlbums,
-    getTopDays,
     getTrackStats,
     getArtistStats,
     getAlbumStats,

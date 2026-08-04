@@ -32,17 +32,17 @@ const topArtists = ref<TotalsList>([]);
 const topAlbums = ref<TotalsList>([]);
 const totalSongs = ref(0);
 const totalTime = ref(0);
-trackerStore.getTopTracks(year).then(data => {
+trackerStore.getTopTracks(parseInt(year, 10)).then(data => {
   topTracks.value = data;
   topTracks.value.forEach(song => {
     totalSongs.value += song[1].playCount;
     totalTime.value += song[1].msPlayed;
   });
 });
-trackerStore.getTopArtists(year).then(data => {
+trackerStore.getTopArtists(parseInt(year, 10)).then(data => {
   topArtists.value = data;
 });
-trackerStore.getTopAlbums(year).then(data => {
+trackerStore.getTopAlbums(parseInt(year, 10)).then(data => {
   topAlbums.value = data;
 });
 

@@ -9,7 +9,7 @@ use tauri_plugin_store::StoreExt;
 use zip::{result::ZipError, ZipArchive};
 
 use crate::{
-    AppError::MyError, db::connection::{execute, init_db}, file::{get_raw_history_files, remove_incoming_dir, rename_incoming_dir, rename_raw_dir, save_raw_track_data}, processing::{process_raw_history_file, process_raw_history_files, process_top_items},
+    AppError::MyError, db::{connection::{init_db}, queries::{get_top_items_range, insert_extended_history}}, file::{get_raw_history_files, remove_incoming_dir, rename_incoming_dir, rename_raw_dir, save_raw_track_data}, models::TrackCount, processing::process_raw_history_file,
 };
 
 mod file;
@@ -66,7 +66,7 @@ async fn process_zip_file(app: AppHandle, file_path: String) -> Result<String, A
         remove_incoming_dir(&app)?;
 
         let conn = app.state::<Mutex<Connection>>();
-        let mut conn = conn.lock().unwrap();
+        let mut conn = conn.lock().unwrap_or_else(|e| e.into_inner());
         let transaction = conn.transaction()?;
         let file = File::open(&file_path)?;
         let mut archive = ZipArchive::new(file)?;
@@ -87,12 +87,7 @@ async fn process_zip_file(app: AppHandle, file_path: String) -> Result<String, A
                         eprintln!("Error saving {} to raw history: {}", file_name, e);
                         return Err(MyError("There was an error processing the zip file".to_string()));
                     }
-                    let sql = "
-                        INSERT INTO extended_history_files (content_hash, filename)
-                        VALUES (?1, ?2)
-                        ON CONFLICT(content_hash) DO NOTHING;
-                    ";
-                    execute(&transaction, sql, [content_hash, file_name])?;
+                    insert_extended_history(&transaction, &content_hash, Some(&file_name))?;
                     saved += 1;
                 }
             }
@@ -152,6 +147,28 @@ async fn process_raw_history(app: AppHandle) -> Result<String, AppError> {
     Ok(result)
 }
 
+#[tauri::command]
+async fn get_top_items(app: AppHandle, item: &str, year: u32, month: Option<u32>) -> Result<Vec<TrackCount>, AppError> {
+    let conn = app.state::<Mutex<Connection>>();
+    let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
+
+    let from = if month.is_some() { let month = month.unwrap(); format!("{year}-{month:02}-01T00:00:00Z") } else { format!("{year}-01-01T00:00:00Z") };
+    let to = if month.is_some() { let month = month.unwrap(); format!("{year}-{month:02}-31T23:59:59Z") } else { format!("{year}-12-31T23:59:59Z") };
+
+    get_top_items_range(&conn, item, &from, &to)
+}
+
+#[tauri::command]
+async fn get_top_items_custom(app: AppHandle, item: &str, from_year: u32, from_month: u32, to_year: u32, to_month: u32) -> Result<Vec<TrackCount>, AppError> {
+    let conn = app.state::<Mutex<Connection>>();
+    let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
+
+    let from = format!("{from_year}-{from_month:02}-01T00:00:00Z");
+    let to = format!("{to_year}-{to_month:02}-31T23:59:59Z");
+
+    get_top_items_range(&conn, item, &from, &to)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -167,7 +184,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             process_zip_file,
-            process_raw_history
+            process_raw_history,
+            get_top_items,
+            get_top_items_custom,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -34,17 +34,17 @@ const topArtists = ref<TotalsList>([]);
 const topAlbums = ref<TotalsList>([]);
 const totalSongs = ref(0);
 const totalTime = ref(0);
-trackerStore.getTopItems('tracks', from, to).then(data => {
+trackerStore.getTopItemsCustom('tracks', from, to).then(data => {
   topTracks.value = data;
   topTracks.value.forEach(song => {
     totalSongs.value += song[1].playCount;
     totalTime.value += song[1].msPlayed;
   });
 });
-trackerStore.getTopItems('artists', from, to).then(data => {
+trackerStore.getTopItemsCustom('artists', from, to).then(data => {
   topArtists.value = data;
 });
-trackerStore.getTopItems('albums', from, to).then(data => {
+trackerStore.getTopItemsCustom('albums', from, to).then(data => {
   topAlbums.value = data;
 });
 

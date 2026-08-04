@@ -7,12 +7,16 @@
 <script setup lang="ts">
 import { load } from '@tauri-apps/plugin-store';
 import { invoke } from '@tauri-apps/api/core';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 
 const invokeProcessing = async () => {
   const store = await load('store.json');
   const processed = await store.get('full-history-processed');
   if (!processed) {
     invoke('process_raw_history');
+    router.push('/settings');
   }
 }
 
