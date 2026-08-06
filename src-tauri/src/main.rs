@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    spotifytracker_lib::run()
+  spotifytracker_lib::run()
 }
