@@ -2,12 +2,9 @@
   <div class="section" v-if="card?.entries?.length && visible">
     <card>
       <button class="title-button" @click="emit('toggle')"><h1 class="title">{{ card.title }}</h1></button>
-      <div v-for="(entry, i) in card.entries.slice(0, entries)">
+      <div v-for="(entry, i) in card.entries.slice(0, entryCount)">
         <div :class="['entry', { 'first-entry': i === 0 }]">
-          <router-link
-            v-if="entry.link"
-            :to="`/${card.linkType}/${encodeURIComponent(entry.link)}`"
-          >
+          <router-link v-if="entry.link" :to="entry.link">
             <span :class="['left-entry', { 'left-entry-small': smallLeftEntry }]">{{ entry.left }}</span>
           </router-link>
           <div v-else ><span class="left-entry">{{ entry.left }}</span></div>
@@ -25,10 +22,9 @@ defineProps<{
   card?: {
     title: string;
     entries: { left: string, right: string | number | undefined, link?: string }[],
-    linkType?: 'tracks' | 'artists' | 'albums',
   }
   visible: boolean
-  entries: number
+  entryCount: number
   smallLeftEntry?: boolean
 }>();
 

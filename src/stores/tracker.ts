@@ -1,7 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
-import { BaseDirectory, readTextFile } from '@tauri-apps/plugin-fs';
 import { defineStore } from 'pinia'
-import { Ref, ref } from 'vue'
+import { ref } from 'vue'
 
 export type PlayCount = {
   primary: string;
@@ -14,129 +13,27 @@ type TrackCounts = {
   artists?: PlayCount[],
   albums?: PlayCount[]
 };
-export type YearlyTrackCount = { [year: number]: TrackCounts; };
-export type MonthlyTrackCount = { [year: number]: { [month: string]: TrackCounts } };
+type YearlyTrackCount = { [year: number]: TrackCounts; };
+type MonthlyTrackCount = { [year: number]: { [month: string]: TrackCounts } };
 
-export interface TrackData {
-  id: string;
-  key?: string;
+export type Play = {
   trackName: string;
   artistName: string;
   albumName: string;
-  playCount?: number;
-  firstPlayed?: string;
-}
-export interface Entry {
-  msPlayed: number;
-  timePlayed?: string;
   timeStamp: string;
-  dateString?: string;
-  timeString?: string;
-}
-export interface TrackStats {
-  [key: string]: {
-    info: TrackData,
-    plays: Entry[],
-    computed?: boolean,
-    firstPlayed?: string,
-  }
-}
-export interface ArtistStats { 
-  [artistName: string]: {
-    name: string,
-    tracks: TrackStats,
-    computed?: boolean,
-    topTracks: TrackData[],
-    firstTracks: TrackData[],
-    totalPlays: number,
-    timePlayed?: string,
-  }
-};
-export interface AlbumStats { 
-  [key: string]: {
-    name: string,
-    artistName: string,
-    tracks: TrackStats,
-    computed?: boolean,
-    topTracks: TrackData[],
-    firstTracks: TrackData[],
-    totalPlays: number,
-    timePlayed?: string,
-  }
-};
-
-const createFullStatsLoader = (fileName: string, statsCache: Ref<ArtistStats | AlbumStats>, createBaseEntry: (key: string) => any) => {
-  return async (key: string) => {
-    if (!statsCache.value || Object.keys(statsCache.value).length === 0) {
-      const module = await readTextFile(`processed_history/${fileName}`, { baseDir: BaseDirectory.AppData });
-      const fullStats = JSON.parse(module) as ({ [artist: string]: TrackStats });
-      if (!fullStats[key]) return;
-
-      Object.keys(fullStats).forEach(entryKey  => {
-        statsCache.value[entryKey] ??= createBaseEntry(entryKey);
-        statsCache.value[entryKey].tracks = fullStats[entryKey] as TrackStats;
-      });
-    }
-
-    const stats = statsCache.value[key];
-    if (stats.computed) {
-      return stats;
-    }
-    console.log(`Computing stats for: ${key}`);
-    Object.keys(stats.tracks).forEach(key => {
-      stats.tracks[key] = trasformFullStats(stats.tracks[key]);
-    });
-    Object.entries(stats.tracks).sort((a, b) => b[1].plays.length - a[1].plays.length).forEach(([key, entry]) => {
-      stats.topTracks.push({ ...entry.info, key, playCount: entry.plays.length });
-    });
-  
-    let firstTimestamps : { [key : string]: number } = {};
-    stats.totalPlays = 0;
-    let totalMsPlayed = 0;
-    Object.keys(stats.tracks).forEach(key => {
-      firstTimestamps[key] = stats.tracks[key].plays.map(play => new Date(play.timeStamp).getTime()).sort((a, b) => a - b)[0];
-      stats.totalPlays += stats.tracks[key].plays.length;
-      totalMsPlayed += stats.tracks[key].plays.reduce((sum, play) => sum + play.msPlayed, 0);
-    });
-    const totalHours = Math.floor(totalMsPlayed / 3600000);
-    const totalMinutes = Math.floor((totalMsPlayed % 3600000) / 60000);
-    const totalSeconds = Math.floor((totalMsPlayed % 60000) / 1000);
-    stats.timePlayed = `${totalHours}h ${totalMinutes}m ${totalSeconds}s`;
-
-    const dateOptions = { year: 'numeric', month: '2-digit', day: '2-digit' } as const;
-    Object.entries(firstTimestamps).sort((a, b) => (a[1] - b[1])).forEach(([key, timeStamp]) => {
-      const date = new Date(timeStamp);
-      stats.firstTracks.push({ ...stats.tracks[key].info, key, firstPlayed: date.toLocaleDateString('en-US', dateOptions) });
-    });
-    stats.computed = true;
-
-    return stats;
-  }
+  msPlayed: number;
 }
 
-const trasformEntry = (item: any) => {
-  return [item[0], { "msPlayed": item[1].ms_played, "playCount": item[1].play_count, }];
-}
-
-const trasformFullStats = (item: any) => {
-  return {
-    info: {
-      id: item.info.id,
-      trackName: item.info.track_name,
-      artistName: item.info.artist_name,
-      albumName: item.info.album_name,
-    },
-    plays: item.plays.map((i: any) => ({
-      msPlayed: i.ms_played,
-      timeStamp: i.time_stamp,
-    })),
-  };
+export type TrackStats = {
+  trackName: string;
+  artistName: string;
+  albumName: string;
+  playCount: number;
+  msPlayed: number;
+  firstPlay: string;
 }
 
 export const useTrackerStore = defineStore('tracker', () => {
-  const fullTrackStats = ref<TrackStats>({});
-  const fullArtistStats = ref<ArtistStats>({});
-  const fullAlbumStats = ref<AlbumStats>({});
   const yearlyTotals = ref<YearlyTrackCount>({});
   const monthlyTotals = ref<MonthlyTrackCount>({});
 
@@ -152,6 +49,15 @@ export const useTrackerStore = defineStore('tracker', () => {
     return getTopItems('albums', year, month);
   }
 
+  const playCountMap = (result: any): PlayCount[] => (
+    result.map((i: any) : PlayCount => ({
+      primary: i.primary,
+      secondary: i.secondary,
+      playCount: i.play_count,
+      msPlayed: i.ms_played,
+    }))
+  );
+
   const getTopItems = async (item : 'tracks' | 'artists' | 'albums', year: number, month?: number): Promise<PlayCount[]> => {
     if (month) {
       if (monthlyTotals.value[year]?.[month]?.[item]?.length) {
@@ -165,12 +71,7 @@ export const useTrackerStore = defineStore('tracker', () => {
 
     const result: any = await invoke('get_top_items', { item, year, month });
 
-    const mapped = result.map((i: any) : PlayCount => ({
-      primary: i.primary,
-      secondary: i.secondary,
-      playCount: i.play_count,
-      msPlayed: i.ms_played,
-    }));
+    const mapped = playCountMap(result)
 
     if (month) {
       if (!monthlyTotals.value[year]) monthlyTotals.value[year] = {};
@@ -193,68 +94,69 @@ export const useTrackerStore = defineStore('tracker', () => {
     const toYear = parseInt(toParts[1], 10);
     const result: any = await invoke('get_top_items_custom', { item, fromYear, fromMonth, toYear, toMonth });
 
-    return result.map((i: any) : PlayCount => ({
-      primary: i.primary,
-      secondary: i.secondary,
+    return playCountMap(result)
+  }
+
+  const playMap = (result: any): Play[] => (
+    result.map((i: any) : Play => ({
+      trackName: i.track,
+      artistName: i.artist,
+      albumName: i.album,
+      timeStamp: i.time_stamp,
+      msPlayed: i.ms_played,
+    }))
+  );
+
+  const getTrackPlays = async (track: string, artist: string): Promise<Play[]> => {
+    const result: any = await invoke('get_track_plays_track',  { track, artist });
+
+    return playMap(result);
+  }
+
+  const getArtistPlays = async (artist: string): Promise<Play[]> => {
+    const result: any = await invoke('get_track_plays_artist',  { artist });
+
+    return playMap(result);
+  }
+
+  const getAlbumPlays = async (album: string, artist: string): Promise<Play[]> => {
+    const result: any = await invoke('get_track_plays_album',  { album, artist });
+
+    return playMap(result);
+  }
+
+  const statsMap = (result: any): TrackStats[] => (
+    result.map((i: any) : TrackStats => ({
+      trackName: i.track,
+      artistName: i.artist,
+      albumName: i.album,
       playCount: i.play_count,
       msPlayed: i.ms_played,
-    }));
-  }
-
-  const getTrackStats = async (trackKey: string) => {
-    if (!fullTrackStats.value || Object.keys(fullTrackStats.value).length === 0) {
-      const module = await readTextFile(`processed_history/full_track_stats.json`, { baseDir: BaseDirectory.AppData });
-      fullTrackStats.value = JSON.parse(module) as TrackStats;
-    }
-
-    if (!fullTrackStats.value[trackKey]) {
-      return;
-    }
-    if (fullTrackStats.value[trackKey].computed) {
-      return fullTrackStats.value[trackKey];
-    }
-
-    const dateOptions = { year: 'numeric', month: '2-digit', day: '2-digit' } as const;
-    const timeOptions = { hour: 'numeric', minute: '2-digit' } as const;
-    fullTrackStats.value[trackKey] = trasformFullStats(fullTrackStats.value[trackKey]);
-    fullTrackStats.value[trackKey].plays = fullTrackStats.value[trackKey].plays.map(play => {
-      const date = new Date(play.timeStamp);
-      
-      const minutesPlayed = Math.floor(play.msPlayed / 60000);
-      const secondsPlayed = Math.floor((play.msPlayed % 60000) / 1000);
-
-      return { 
-        ...play,
-        dateString: date.toLocaleDateString('en-US', dateOptions),
-        timeString: date.toLocaleTimeString('en-US', timeOptions),
-        timePlayed: `${minutesPlayed}m ${secondsPlayed}s`,
-      };
-    }).reverse();
-    const firstTimestamp = fullTrackStats.value[trackKey].plays[fullTrackStats.value[trackKey].plays.length - 1].timeStamp;
-    fullTrackStats.value[trackKey].firstPlayed = new Date(firstTimestamp).toLocaleDateString('en-US', dateOptions);
-    fullTrackStats.value[trackKey].computed = true;
-    return fullTrackStats.value[trackKey];
-  }
-
-  const getArtistStats = createFullStatsLoader(
-    "full_artist_stats.json",
-    fullArtistStats,
-    artist => ({ name: artist, tracks: {}, totalPlays: 0, topTracks: [], firstTracks: []  }),
+      firstPlay: i.first_play,
+    }))
   );
 
-  const getAlbumStats = createFullStatsLoader(
-    "full_album_stats.json",
-    fullAlbumStats,
-    album => ({ name: album.split(' - ')[0], artistName: album.split(' - ')[1], tracks: {}, totalPlays: 0, topTracks: [], firstTracks: []  }),
-  );
+  const getArtistStats = async(artist: string): Promise<TrackStats[]> => {
+    const result: any = await invoke('get_track_stats_artist',  { artist });
+
+    return statsMap(result);
+  }
+
+  const getAlbumStats = async(album: string, artist: string): Promise<TrackStats[]> => {
+    const result: any = await invoke('get_track_stats_album',  { album, artist });
+
+    return statsMap(result);
+  }
 
   return {
     getTopTracks,
-    getTopItemsCustom,
     getTopArtists,
     getTopAlbums,
-    getTrackStats,
+    getTopItemsCustom,
+    getTrackPlays,
+    getArtistPlays,
     getArtistStats,
+    getAlbumPlays,
     getAlbumStats,
   }
 });

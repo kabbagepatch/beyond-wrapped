@@ -110,7 +110,7 @@ pub fn get_track_plays(conn: &Connection, track: Option<&str>, artist: &str, alb
   let (where_sql, params) = if track.is_none() && album.is_none() {
     ("t.artist = ?1", params![artist])
   } else if track.is_some() {
-    ("t.track = ?1 AND t.artist = ?2", params![track.unwrap(), artist])
+    ("t.name = ?1 AND t.artist = ?2", params![track.unwrap(), artist])
   } else {
     ("t.album = ?1 AND t.artist = ?2", params![album.unwrap(), artist])
   };

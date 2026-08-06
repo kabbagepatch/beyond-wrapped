@@ -8,21 +8,22 @@
     <stats-card
       :card="cardOne"
       :visible="displayCardOne"
-      :entries="displaySummary ? 5 : 200"
+      :entryCount="displaySummary ? 5 : 1000"
       @toggle="toggleCardOne"
     />
     <stats-card
       :card="cardTwo"
       :visible="displayCardTwo"
-      :entries="displaySummary ? 5 : 200"
+      :entryCount="displaySummary ? 5 : 1000"
       @toggle="toggleCardTwo"
       :smallLeftEntry="smallLeftEntry"
     />
     <stats-card
       :card="cardThree"
       :visible="displayCardThree"
-      :entries="displaySummary ? 5 : 200"
+      :entryCount="displaySummary ? 5 : 1000"
       @toggle="toggleCardThree"
+      :smallLeftEntry="smallLeftEntry"
     />
   </div>
 </template>
@@ -33,9 +34,9 @@ import StatsCard from "./StatsCard.vue";
 
 defineProps<{
   summary: { key: string; value: string | number | undefined }[],
-  cardOne: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[], linkType?: 'tracks' | 'artists' | 'albums' },
-  cardTwo?: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[], linkType?: 'tracks' | 'artists' | 'albums' },
-  cardThree?: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[], linkType?: 'tracks' | 'artists' | 'albums' },
+  cardOne: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[] },
+  cardTwo?: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[] },
+  cardThree?: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[] },
   smallLeftEntry?: boolean
 }>();
 

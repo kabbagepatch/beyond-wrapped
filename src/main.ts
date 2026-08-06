@@ -15,9 +15,9 @@ import AlbumStats from "./pages/AlbumStats.vue";
 const routes = [
   { path: '/year/:year', component: YearlyStats },
   { path: '/year/:year/:month', component: MonthlyStats },
-  { path: '/tracks/:track', component: TrackStats },
+  { path: '/artists/:artist/tracks/:track', component: TrackStats },
   { path: '/artists/:artist', component: ArtistStats },
-  { path: '/albums/:album', component: AlbumStats },
+  { path: '/artists/:artist/albums/:album', component: AlbumStats },
   { path: '/custom', component: CustomStats },
   { path: '/settings', component: Settings },
   { path: '/', component: ExtendedStats },

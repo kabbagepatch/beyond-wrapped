@@ -29,18 +29,27 @@
       ]"
       :cardOne="{
         title: 'Top Tracks',
-        entries: trackPlays.map(track => ({ left: `${track.primary} - ${track.secondary}`, right: track.playCount, link: `${track.primary} - ${track.secondary}` })),
-        linkType: 'tracks'
+        entries: trackPlays.map(track => ({
+          left: `${track.primary} - ${track.secondary}`,
+          right: track.playCount,
+          link: `/artists/${encodeURIComponent(track.secondary ?? '')}/tracks/${encodeURIComponent(track.primary)}`
+        })),
       }"
       :cardTwo="{
         title: 'Top Artists',
-        entries: artistPlays.map(artist => ({ left: artist.primary, right: artist.playCount, link: artist.primary })),
-        linkType: 'artists'
+        entries: artistPlays.map(artist => ({
+          left: artist.primary,
+          right: artist.playCount,
+          link: `/artists/${encodeURIComponent(artist.primary)}`
+        })),
       }"
       :cardThree="{
         title: 'Top Albums',
-        entries: albumPlays.map(album => ({ left: `${album.primary} - ${album.secondary}`, right: album.playCount, link: `${album.primary} - ${album.secondary}` })),
-        linkType: 'albums'
+        entries: albumPlays.map(album => ({
+          left: `${album.primary} - ${album.secondary}`,
+          right: album.playCount,
+          link: `/artists/${encodeURIComponent(album.secondary ?? '')}/albums/${encodeURIComponent(album.primary)}`
+        })),
       }"
     />
   </div>

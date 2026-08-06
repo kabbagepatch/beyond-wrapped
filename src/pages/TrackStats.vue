@@ -1,20 +1,24 @@
 <template>
   <div class="container">
-    <Header :title="trackKey.split(' - ')[0]" icon="note-transparent" />
-    <div v-if="track" class="summary">
-      <div>Track Name: <span class="summary-title">{{ track.info.trackName }}</span></div>
-      <div>Artist: <router-link :to="`/artists/${encodeURIComponent(track.info.artistName)}`"><span class="summary-title">{{ track.info.artistName }}</span></router-link></div>
-      <div>Album: <span class="summary-title">{{ track.info.albumName }}</span></div>
-      <div>Number of times played: <span class="summary-title">{{ track.plays.length }}</span></div>
-      <div>First Played on: <span class="summary-title">{{ track.firstPlayed }}</span></div>
+    <Header :title="track" icon="note-transparent" />
+    <div v-if="plays" class="summary">
+      <div>Track Name: <span class="summary-title">{{ plays[0].trackName }}</span></div>
+      <div>Artist: <router-link :to="`/artists/${encodeURIComponent(plays[0].artistName)}`"><span class="summary-title">{{ plays[0].artistName }}</span></router-link></div>
+      <div>Album: <span class="summary-title">{{ plays[0].albumName }}</span></div>
+      <div>Number of times played: <span class="summary-title">{{ plays.length }}</span></div>
+      <div>First Played on: <span class="summary-title">{{ new Date(plays[0].timeStamp).toLocaleDateString('en-US', dateOptions) }}</span></div>
     </div>
-    <card v-if="track" class="plays-card">
+    <card v-if="plays" class="plays-card">
       <h1>Plays</h1>
-      <div class="plays" v-for="play in (showAll ? track.plays : track.plays.slice(0, 12))">
-        <div>{{ play.dateString }}</div>
-        <div>{{ play.timeString }} for {{ play.timePlayed }}</div>
-      </div>
-      <button class="plays" @click="showAll = !showAll">
+      <div class="plays" v-for="play in (showAll ? plays : plays.slice(0, 15))">
+        <div>
+          {{ new Date(play.timeStamp).toLocaleDateString('en-US', dateOptions) }}
+          {{ new Date(play.timeStamp).toLocaleTimeString('en-US', timeOptions) }}
+        </div>
+        <div>
+          {{ `${Math.floor(play.msPlayed / 60000)}m ${Math.floor((play.msPlayed % 60000) / 1000)}s` }}</div>
+        </div>
+        <button class="plays" @click="showAll = !showAll">
         <div>
           {{ showAll ? 'Less' : 'More' }}...
         </div>
@@ -28,15 +32,19 @@ import { ref } from "vue";
 import { useRoute } from "vue-router";
 import Header from "../Header.vue";
 import Card from "../components/Card.vue";
-import { TrackStats, useTrackerStore } from "../stores/tracker.ts";
+import { Play, useTrackerStore } from "../stores/tracker.ts";
 
 const trackerStore = useTrackerStore();
 const route = useRoute();
-const trackKey = route.params.track as string;
+const track = route.params.track as string;
+const artist = route.params.artist as string;
 
-const track = ref<TrackStats['']>();
-trackerStore.getTrackStats(trackKey).then(data => {
-  track.value = data;
+const dateOptions = { year: 'numeric', month: '2-digit', day: '2-digit' } as const;
+const timeOptions = { hour: 'numeric', minute: '2-digit' } as const;
+
+const plays = ref<Play[]>();
+trackerStore.getTrackPlays(track, artist).then(data => {
+  plays.value = data;
 });
 
 const showAll = ref(false);
