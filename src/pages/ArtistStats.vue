@@ -5,11 +5,11 @@
       v-if="artist"
       :summary="[
         { key: 'Discovered on', value: artist.firstTracks[0].firstPlayed },
-        { key: 'Distinct tracks played', value: artist.topTracks.length },
+        { key: 'Distinct tracks played', value: artist.trackPlays.length },
         { key: 'Total number of plays', value: artist.totalPlays },
         { key: 'Total Time played', value: artist.timePlayed },
       ]"
-      :cardOne="{ title: 'Top Tracks', entries: artist.topTracks.map(track => ({ left: track.trackName, right: track.playCount, link: track.key })), linkType: 'tracks' }"
+      :cardOne="{ title: 'Top Tracks', entries: artist.trackPlays.map(track => ({ left: track.trackName, right: track.playCount, link: track.key })), linkType: 'tracks' }"
       :cardTwo="{ title: 'First Tracks', entries: artist.firstTracks.map(track => ({ left: track.trackName, right: track.firstPlayed, link: track.key })), linkType: 'tracks' }"
       :smallLeftEntry="true"
     />

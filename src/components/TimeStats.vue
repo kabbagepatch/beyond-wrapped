@@ -21,15 +21,27 @@
     </div>
     <Stats
       :summary="[
-        { key: 'Songs Played', value: totalSongs },
+        { key: 'Songs Played', value: totalPlayCount },
         { key: 'Spent Listening', value: `${Math.floor(totalTime / 3600000)}h ${Math.floor((totalTime % 3600000) / 60000)}m ${Math.floor((totalTime % 60000) / 1000)}s` },
-        { key: 'Distinct Songs', value: topSongs.length },
-        { key: 'Distinct Artists', value: topArtists.length },
-        { key: 'Distinct Albums', value: topAlbums.length },
+        { key: 'Distinct Songs', value: trackPlays.length },
+        { key: 'Distinct Artists', value: artistPlays.length },
+        { key: 'Distinct Albums', value: albumPlays.length },
       ]"
-      :cardOne="{ title: 'Top Songs', entries: topSongs.map(song => ({ left: song[0], right: song[1].playCount, link: song[0] })), linkType: 'tracks' }"
-      :cardTwo="{ title: 'Top Artists', entries: topArtists.map(artist => ({ left: artist[0], right: artist[1].playCount, link: artist[0] })), linkType: 'artists' }"
-      :cardThree="{ title: 'Top Albums', entries: topAlbums.map(album => ({ left: album[0], right: album[1].playCount, link: album[0] })), linkType: 'albums' }"
+      :cardOne="{
+        title: 'Top Tracks',
+        entries: trackPlays.map(track => ({ left: `${track.primary} - ${track.secondary}`, right: track.playCount, link: `${track.primary} - ${track.secondary}` })),
+        linkType: 'tracks'
+      }"
+      :cardTwo="{
+        title: 'Top Artists',
+        entries: artistPlays.map(artist => ({ left: artist.primary, right: artist.playCount, link: artist.primary })),
+        linkType: 'artists'
+      }"
+      :cardThree="{
+        title: 'Top Albums',
+        entries: albumPlays.map(album => ({ left: `${album.primary} - ${album.secondary}`, right: album.playCount, link: `${album.primary} - ${album.secondary}` })),
+        linkType: 'albums'
+      }"
     />
   </div>
 </template>
@@ -38,7 +50,7 @@
 import { useRouter } from "vue-router";
 import Stats from "./Stats.vue";
 import Dropdown from "./Dropdown.vue";
-import { TotalsList } from "../stores/tracker";
+import { PlayCount } from "../stores/tracker";
 
 const router = useRouter();
 
@@ -51,11 +63,11 @@ const props = defineProps<{
   },
   month?: string,
   year?: string,
-  totalSongs: number,
+  totalPlayCount: number,
   totalTime: number,
-  topSongs: TotalsList,
-  topArtists: TotalsList,
-  topAlbums: TotalsList,
+  trackPlays: PlayCount[],
+  artistPlays: PlayCount[],
+  albumPlays: PlayCount[],
   back?: () => void,
   forward?: () => void,
 }>();

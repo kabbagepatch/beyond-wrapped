@@ -3,21 +3,19 @@ import { BaseDirectory, readTextFile } from '@tauri-apps/plugin-fs';
 import { defineStore } from 'pinia'
 import { Ref, ref } from 'vue'
 
-export interface TrackTotals { msPlayed: number; playCount: number; }
-export type TotalsList = [ string, TrackTotals ][];
-export interface YearlyTotals { [year: string]: TotalsList; }
-export interface MonthlyTotals { [year: string]: { [month: string]: TotalsList }; }
-
-type TrackCounts = { tracks?: TrackCount[], artists?: TrackCount[], albums?: TrackCount[] };
-export type YearlyTrackCount = { [year: number]: TrackCounts; };
-export type MonthlyTrackCount = { [year: number]: { [month: string]: TrackCounts } };
-
-export type TrackCount = {
+export type PlayCount = {
   primary: string;
   secondary?: string;
   playCount: number;
   msPlayed: number;
 }
+type TrackCounts = {
+  tracks?: PlayCount[],
+  artists?: PlayCount[],
+  albums?: PlayCount[]
+};
+export type YearlyTrackCount = { [year: number]: TrackCounts; };
+export type MonthlyTrackCount = { [year: number]: { [month: string]: TrackCounts } };
 
 export interface TrackData {
   id: string;
@@ -142,32 +140,32 @@ export const useTrackerStore = defineStore('tracker', () => {
   const yearlyTotals = ref<YearlyTrackCount>({});
   const monthlyTotals = ref<MonthlyTrackCount>({});
 
-  const getTopTracks = async (year: number, month?: number): Promise<TotalsList> => {
+  const getTopTracks = async (year: number, month?: number): Promise<PlayCount[]> => {
     return getTopItems('tracks', year, month);
   }
 
-  const getTopArtists = async (year: number, month?: number): Promise<TotalsList> => {
+  const getTopArtists = async (year: number, month?: number): Promise<PlayCount[]> => {
     return getTopItems('artists', year, month);
   }
 
-  const getTopAlbums = async (year: number, month?: number): Promise<TotalsList> => {
+  const getTopAlbums = async (year: number, month?: number): Promise<PlayCount[]> => {
     return getTopItems('albums', year, month);
   }
 
-  const getTopItems = async (item : 'tracks' | 'artists' | 'albums', year: number, month?: number): Promise<TotalsList> => {
+  const getTopItems = async (item : 'tracks' | 'artists' | 'albums', year: number, month?: number): Promise<PlayCount[]> => {
     if (month) {
       if (monthlyTotals.value[year]?.[month]?.[item]?.length) {
-        return monthlyTotals.value[year][month][item].map((i: any) => ([ i.primary + (i.secondary ? ` - ${i.secondary}` : ''), i ]));;
+        return monthlyTotals.value[year][month][item];
       }
     } else {
       if (yearlyTotals.value[year]?.[item]?.length) {
-        return yearlyTotals.value[year][item].map((i: any) => ([ i.primary + (i.secondary ? ` - ${i.secondary}` : ''), i ]));;
+        return yearlyTotals.value[year][item];
       }
     }
 
     const result: any = await invoke('get_top_items', { item, year, month });
 
-    const mapped = result.map((i: any) : TrackCount => ({
+    const mapped = result.map((i: any) : PlayCount => ({
       primary: i.primary,
       secondary: i.secondary,
       playCount: i.play_count,
@@ -183,10 +181,10 @@ export const useTrackerStore = defineStore('tracker', () => {
       yearlyTotals.value[year][item] = mapped;
     }
 
-    return mapped.map((i: any) => ([ i.primary + (i.secondary ? ` - ${i.secondary}` : ''), i ]));
+    return mapped;
   }
 
-  const getTopItemsCustom = async (item : 'tracks' | 'artists' | 'albums', from : string, to : string): Promise<TotalsList> => {
+  const getTopItemsCustom = async (item : 'tracks' | 'artists' | 'albums', from : string, to : string): Promise<PlayCount[]> => {
     const fromParts = from.split('-');
     const fromMonth = parseInt(fromParts[0], 10);
     const fromYear = parseInt(fromParts[1], 10);
@@ -195,12 +193,12 @@ export const useTrackerStore = defineStore('tracker', () => {
     const toYear = parseInt(toParts[1], 10);
     const result: any = await invoke('get_top_items_custom', { item, fromYear, fromMonth, toYear, toMonth });
 
-    return result.map((i: any) : TrackCount => ({
+    return result.map((i: any) : PlayCount => ({
       primary: i.primary,
       secondary: i.secondary,
       playCount: i.play_count,
       msPlayed: i.ms_played,
-    })).map((i: any) => ([ i.primary + (i.secondary ? ` - ${i.secondary}` : ''), i ]));
+    }));
   }
 
   const getTrackStats = async (trackKey: string) => {

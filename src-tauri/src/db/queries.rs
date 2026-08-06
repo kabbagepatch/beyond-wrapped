@@ -1,6 +1,6 @@
 use rusqlite::{Connection, params};
 
-use crate::{AppError::{self}, db::connection::{execute, query_map, query_row}, models::{RawFile, TrackCount, TrackEntryData}};
+use crate::{AppError::{self}, db::connection::{execute, query_map, query_row}, models::{Play, PlayCount, RawFile, Stats, TrackEntryData}};
 
 pub fn get_extended_history_file_info(conn: &Connection, content_hash: &str) -> Result<Option<RawFile>, AppError> {
   let sql = "SELECT content_hash, filename, processed_at FROM extended_history_files where content_hash = ?1";
@@ -72,7 +72,7 @@ pub fn insert_play(conn: &Connection, entry: &TrackEntryData) -> Result<usize, A
   )
 }
 
-pub fn get_top_items_range(conn: &Connection, item: &str, from: &str, to: &str) -> Result<Vec<TrackCount>, AppError> {
+pub fn get_top_items_range(conn: &Connection, item: &str, from: &str, to: &str) -> Result<Vec<PlayCount>, AppError> {
   let (select, group_by) = match item {
     "tracks"  => (
       "t.name, t.artist",
@@ -97,11 +97,59 @@ pub fn get_top_items_range(conn: &Connection, item: &str, from: &str, to: &str) 
   ");
 
   query_map(conn, &sql, [from, to], |row| Ok(
-    TrackCount {
+    PlayCount {
       primary: row.get(0)?,
       secondary: if item != "artists" { row.get(1)? } else { None },
       play_count: row.get(2)?,
       ms_played: row.get(3)?,
+    }
+  ))
+}
+
+pub fn get_track_plays(conn: &Connection, track: Option<&str>, artist: &str, album: Option<&str>) -> Result<Vec<Play>, AppError> {
+  let (where_sql, params) = if track.is_none() && album.is_none() {
+    ("t.artist = ?1", params![artist])
+  } else if track.is_some() {
+    ("t.track = ?1 AND t.artist = ?2", params![track.unwrap(), artist])
+  } else {
+    ("t.album = ?1 AND t.artist = ?2", params![album.unwrap(), artist])
+  };
+
+  let sql = format!("
+    SELECT t.name, t.artist, t.album, p.time_stamp, p.ms_played
+    FROM plays p JOIN tracks t ON p.track_id = t.spotify_id
+    WHERE {where_sql}
+    ORDER BY p.time_stamp ASC
+  ");
+
+  query_map(conn, &sql, params, |row| Ok(
+    Play { track: row.get(0)?, artist: row.get(1)?, album: row.get(2)?, time_stamp: row.get(3)?, ms_played: row.get(4)? }
+  ))
+}
+
+pub fn get_track_stats(conn: &Connection, artist: &str, album: Option<&str>) -> Result<Vec<Stats>, AppError> {
+  let (where_sql, params) = if album.is_none() {
+    ("t.artist = ?1", params![artist])
+  } else {
+    ("t.album = ?1 AND t.artist = ?2", params![album.unwrap(), artist])
+  };
+
+  let sql = format!("
+    SELECT t.name, t.artist, t.album, COUNT(*) AS play_count, SUM(p.ms_played) AS ms_played, MIN(p.time_stamp) AS first_play
+    FROM plays p JOIN tracks t ON p.track_id = t.spotify_id
+    WHERE {where_sql}
+    GROUP BY t.name
+    ORDER BY play_count DESC
+  ");
+
+  query_map(conn, &sql, params, |row| Ok(
+    Stats {
+      track: row.get(0)?,
+      artist: row.get(1)?,
+      album: row.get(2)?,
+      play_count: row.get(3)?,
+      ms_played: row.get(4)?,
+      first_play: row.get(5)?
     }
   ))
 }

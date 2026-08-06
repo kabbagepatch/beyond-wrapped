@@ -5,11 +5,11 @@
       v-if="album"
       :summary="[
         { key: 'Discovered on', value: album.firstTracks[0].firstPlayed },
-        { key: 'Distinct tracks played', value: album.topTracks.length },
+        { key: 'Distinct tracks played', value: album.trackPlays.length },
         { key: 'Total number of plays', value: album.totalPlays },
         { key: 'Total Time played', value: album.timePlayed },
       ]"
-      :cardOne="{ title: 'Times Played', entries: album.topTracks.map(track => ({ left: track.trackName, right: track.playCount, link: track.key })), linkType: 'tracks' }"
+      :cardOne="{ title: 'Times Played', entries: album.trackPlays.map(track => ({ left: track.trackName, right: track.playCount, link: track.key })), linkType: 'tracks' }"
       :cardTwo="{ title: 'First Played', entries: album.firstTracks.map(track => ({ left: track.trackName, right: track.firstPlayed, link: track.key })), linkType: 'tracks' }"
     />
   </div>

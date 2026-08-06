@@ -21,6 +21,12 @@ const invokeProcessing = async () => {
 }
 
 invokeProcessing();
+invoke('get_track_stats_artist', { artist: 'Carly Rae Jepsen' }).then((r: any) => {
+  console.log('success');
+  console.log(r.slice(0, 10));
+}).catch(e => {
+  console.log('failure')
+});
 
 </script>
 

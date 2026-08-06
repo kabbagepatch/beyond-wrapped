@@ -4,10 +4,10 @@
     <TimeStats
       :month="monthString"
       :year="year"
-      :topSongs="topTracks"
-      :topArtists="topArtists"
-      :topAlbums="topAlbums"
-      :totalSongs="totalSongs"
+      :trackPlays="trackPlays"
+      :artistPlays="artistPlays"
+      :albumPlays="albumPlays"
+      :totalPlayCount="totalPlayCount"
       :totalTime="totalTime"
       :back="back"
       :forward="forward"
@@ -20,7 +20,7 @@ import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Header from "../Header.vue";
 import TimeStats from "../components/TimeStats.vue";
-import { TotalsList, useTrackerStore } from "../stores/tracker.ts";
+import { PlayCount, useTrackerStore } from "../stores/tracker.ts";
 
 const trackerStore = useTrackerStore();
 const router = useRouter();
@@ -29,23 +29,32 @@ const month = route.params.month as string;
 const monthString = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][parseInt(month) - 1];
 const year = route.params.year as string;
 
-const topTracks = ref<TotalsList>([]);
-const topArtists = ref<TotalsList>([]);
-const topAlbums = ref<TotalsList>([]);
-const totalSongs = ref(0);
+const trackPlays = ref<PlayCount[]>([]);
+const artistPlays = ref<PlayCount[]>([]);
+const albumPlays = ref<PlayCount[]>([]);
+const totalPlayCount = ref(0);
 const totalTime = ref(0);
+
 trackerStore.getTopTracks(parseInt(year, 10), parseInt(month, 10)).then(data => {
-  topTracks.value = data;
-  topTracks.value.forEach(song => {
-    totalSongs.value += song[1].playCount;
-    totalTime.value += song[1].msPlayed;
-  });
+  trackPlays.value = data;
+  let playCount = 0;
+  let time = 0;
+
+  for (const song of data) {
+    playCount += song.playCount;
+    time += song.msPlayed;
+  }
+
+  totalPlayCount.value = playCount;
+  totalTime.value = time;
 });
+
 trackerStore.getTopArtists(parseInt(year, 10), parseInt(month, 10)).then(data => {
-  topArtists.value = data;
+  artistPlays.value = data;
 });
+
 trackerStore.getTopAlbums(parseInt(year, 10), parseInt(month, 10)).then(data => {
-  topAlbums.value = data;
+  albumPlays.value = data;
 });
 
 const forward = () => {

@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS plays (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   track_id    TEXT NOT NULL REFERENCES tracks(spotify_id),
   time_stamp  TEXT NOT NULL,
+  year        TEXT GENERATED ALWAYS AS (SUBSTR(time_stamp, 1, 4)) STORED,
   ms_played   INTEGER NOT NULL,
   UNIQUE(track_id, time_stamp)
 );
@@ -29,8 +30,10 @@ CREATE TABLE IF NOT EXISTS extended_history_files (
 );
 CREATE INDEX IF NOT EXISTS idx_plays_track ON plays(track_id);
 CREATE INDEX IF NOT EXISTS idx_plays_timestamp ON plays(time_stamp);
+CREATE INDEX IF NOT EXISTS idx_plays_track_time ON plays(track_id, time_stamp);
 CREATE INDEX IF NOT EXISTS idx_tracks_name_artist ON tracks(name, artist);
 CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist);
 CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album, artist);
+CREATE INDEX IF NOT EXISTS idx_plays_year ON plays(year);
 COMMIT;
 "#;

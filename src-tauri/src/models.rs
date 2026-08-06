@@ -60,9 +60,28 @@ pub struct RawFile {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct TrackCount {
+pub struct PlayCount {
     pub primary: String,
     pub secondary: Option<String>,
     pub play_count: i32,
     pub ms_played: i64,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Play {
+    pub track: String,
+    pub artist: String,
+    pub album: String,
+    pub time_stamp: String,
+    pub ms_played: i32,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Stats {
+    pub track: String,
+    pub artist: String,
+    pub album: String,
+    pub play_count: i32,
+    pub ms_played:  i64,
+    pub first_play: String,
 }

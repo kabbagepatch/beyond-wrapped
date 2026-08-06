@@ -9,7 +9,7 @@ use tauri_plugin_store::StoreExt;
 use zip::{result::ZipError, ZipArchive};
 
 use crate::{
-    AppError::MyError, db::{connection::{init_db}, queries::{get_top_items_range, insert_extended_history}}, file::{get_raw_history_files, remove_incoming_dir, rename_incoming_dir, rename_raw_dir, save_raw_track_data}, models::TrackCount, processing::process_raw_history_file,
+    AppError::MyError, db::{connection::init_db, queries::{get_top_items_range, get_track_plays, get_track_stats, insert_extended_history}}, file::{get_raw_history_files, remove_incoming_dir, rename_incoming_dir, rename_raw_dir, save_raw_track_data}, models::{Play, PlayCount, Stats}, processing::process_raw_history_file,
 };
 
 mod file;
@@ -148,7 +148,7 @@ async fn process_raw_history(app: AppHandle) -> Result<String, AppError> {
 }
 
 #[tauri::command]
-async fn get_top_items(app: AppHandle, item: &str, year: u32, month: Option<u32>) -> Result<Vec<TrackCount>, AppError> {
+async fn get_top_items(app: AppHandle, item: &str, year: u32, month: Option<u32>) -> Result<Vec<PlayCount>, AppError> {
     let conn = app.state::<Mutex<Connection>>();
     let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
 
@@ -159,7 +159,7 @@ async fn get_top_items(app: AppHandle, item: &str, year: u32, month: Option<u32>
 }
 
 #[tauri::command]
-async fn get_top_items_custom(app: AppHandle, item: &str, from_year: u32, from_month: u32, to_year: u32, to_month: u32) -> Result<Vec<TrackCount>, AppError> {
+async fn get_top_items_custom(app: AppHandle, item: &str, from_year: u32, from_month: u32, to_year: u32, to_month: u32) -> Result<Vec<PlayCount>, AppError> {
     let conn = app.state::<Mutex<Connection>>();
     let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
 
@@ -167,6 +167,46 @@ async fn get_top_items_custom(app: AppHandle, item: &str, from_year: u32, from_m
     let to = format!("{to_year}-{to_month:02}-31T23:59:59Z");
 
     get_top_items_range(&conn, item, &from, &to)
+}
+
+#[tauri::command]
+async fn get_track_plays_track(app: AppHandle, track: &str, artist: &str) -> Result<Vec<Play>, AppError> {
+    let conn = app.state::<Mutex<Connection>>();
+    let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
+
+    get_track_plays(&conn, Some(track), artist, None)
+}
+
+#[tauri::command]
+async fn get_track_plays_artist(app: AppHandle, artist: &str) -> Result<Vec<Play>, AppError> {
+    let conn = app.state::<Mutex<Connection>>();
+    let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
+
+    get_track_plays(&conn, None, artist, None)
+}
+
+#[tauri::command]
+async fn get_track_plays_album(app: AppHandle, album: &str, artist: &str) -> Result<Vec<Play>, AppError> {
+    let conn = app.state::<Mutex<Connection>>();
+    let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
+
+    get_track_plays(&conn, None, artist, Some(album))
+}
+
+#[tauri::command]
+async fn get_track_stats_artist(app: AppHandle, artist: &str) -> Result<Vec<Stats>, AppError> {
+    let conn = app.state::<Mutex<Connection>>();
+    let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
+
+    get_track_stats(&conn, artist, None)
+}
+
+#[tauri::command]
+async fn get_track_stats_album(app: AppHandle, album: &str, artist: &str) -> Result<Vec<Stats>, AppError> {
+    let conn = app.state::<Mutex<Connection>>();
+    let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
+
+    get_track_stats(&conn, artist, Some(album))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -187,6 +227,11 @@ pub fn run() {
             process_raw_history,
             get_top_items,
             get_top_items_custom,
+            get_track_plays_track,
+            get_track_plays_artist,
+            get_track_plays_album,
+            get_track_stats_artist,
+            get_track_stats_album
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

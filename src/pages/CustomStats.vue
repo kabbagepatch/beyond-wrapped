@@ -8,10 +8,10 @@
         toMonth: to.split('-')[0],
         toYear: to.split('-')[1],
       }"
-      :topSongs="topTracks"
-      :topArtists="topArtists"
-      :topAlbums="topAlbums"
-      :totalSongs="totalSongs"
+      :trackPlays="trackPlays"
+      :artistPlays="artistPlays"
+      :albumPlays="albumPlays"
+      :totalPlayCount="totalPlayCount"
       :totalTime="totalTime"
     />
   </div>
@@ -22,30 +22,39 @@ import { ref } from "vue";
 import { useRoute } from "vue-router";
 import Header from "../Header.vue";
 import TimeStats from "../components/TimeStats.vue";
-import { TotalsList, useTrackerStore } from "../stores/tracker.ts";
+import { PlayCount, useTrackerStore } from "../stores/tracker.ts";
 
 const trackerStore = useTrackerStore();
 const route = useRoute();
 const from = route.query.from as string || '9-2012';
 const to = route.query.to as string || '12-2025';
 
-const topTracks = ref<TotalsList>([]);
-const topArtists = ref<TotalsList>([]);
-const topAlbums = ref<TotalsList>([]);
-const totalSongs = ref(0);
+const trackPlays = ref<PlayCount[]>([]);
+const artistPlays = ref<PlayCount[]>([]);
+const albumPlays = ref<PlayCount[]>([]);
+const totalPlayCount = ref(0);
 const totalTime = ref(0);
+
 trackerStore.getTopItemsCustom('tracks', from, to).then(data => {
-  topTracks.value = data;
-  topTracks.value.forEach(song => {
-    totalSongs.value += song[1].playCount;
-    totalTime.value += song[1].msPlayed;
-  });
+  trackPlays.value = data;
+  let playCount = 0;
+  let time = 0;
+
+  for (const song of data) {
+    playCount += song.playCount;
+    time += song.msPlayed;
+  }
+
+  totalPlayCount.value = playCount;
+  totalTime.value = time;
 });
+
 trackerStore.getTopItemsCustom('artists', from, to).then(data => {
-  topArtists.value = data;
+  artistPlays.value = data;
 });
+
 trackerStore.getTopItemsCustom('albums', from, to).then(data => {
-  topAlbums.value = data;
+  albumPlays.value = data;
 });
 
 </script>
