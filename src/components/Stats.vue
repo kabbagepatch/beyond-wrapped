@@ -8,20 +8,20 @@
     <stats-card
       :card="cardOne"
       :visible="displayCardOne"
-      :entryCount="displaySummary ? 5 : 1000"
+      :entryCount="displaySummary ? (entryCount ?? 5) : 1000"
       @toggle="toggleCardOne"
     />
     <stats-card
       :card="cardTwo"
       :visible="displayCardTwo"
-      :entryCount="displaySummary ? 5 : 1000"
+      :entryCount="displaySummary ? (entryCount ?? 5) : 1000"
       @toggle="toggleCardTwo"
       :smallLeftEntry="smallLeftEntry"
     />
     <stats-card
       :card="cardThree"
       :visible="displayCardThree"
-      :entryCount="displaySummary ? 5 : 1000"
+      :entryCount="displaySummary ? (entryCount ?? 5) : 1000"
       @toggle="toggleCardThree"
       :smallLeftEntry="smallLeftEntry"
     />
@@ -33,11 +33,12 @@ import { ref } from "vue";
 import StatsCard from "./StatsCard.vue";
 
 defineProps<{
-  summary: { key: string; value: string | number | undefined }[],
-  cardOne: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[] },
+  summary?: { key: string; value: string | number | undefined }[],
+  cardOne?: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[] },
   cardTwo?: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[] },
   cardThree?: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[] },
-  smallLeftEntry?: boolean
+  smallLeftEntry?: boolean,
+  entryCount?: number,
 }>();
 
 const displaySummary = ref(true);

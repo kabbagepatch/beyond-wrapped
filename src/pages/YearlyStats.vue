@@ -19,7 +19,7 @@ import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Header from "../Header.vue";
 import TimeStats from "../components/TimeStats.vue";
-import { PlayCount, useTrackerStore } from "../stores/tracker.ts";
+import { ItemPlayData, useTrackerStore } from "../stores/tracker.ts";
 
 const router = useRouter();
 const route = useRoute();
@@ -27,9 +27,9 @@ const year = route.params.year as string;
 
 const trackerStore = useTrackerStore();
 
-const trackPlays = ref<PlayCount[]>([]);
-const artistPlays = ref<PlayCount[]>([]);
-const albumPlays = ref<PlayCount[]>([]);
+const trackPlays = ref<ItemPlayData[]>([]);
+const artistPlays = ref<ItemPlayData[]>([]);
+const albumPlays = ref<ItemPlayData[]>([]);
 const totalPlayCount = ref(0);
 const totalTime = ref(0);
 

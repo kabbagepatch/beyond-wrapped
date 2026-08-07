@@ -37,7 +37,7 @@ import { ref } from "vue";
 import { useRoute } from "vue-router";
 import Header from "../Header.vue";
 import Stats from "../components/Stats.vue";
-import { Play, TrackStats, useTrackerStore } from "../stores/tracker.ts";
+import { PlayEntry, TrackStats, useTrackerStore } from "../stores/tracker.ts";
 
 const trackerStore = useTrackerStore();
 const route = useRoute();
@@ -68,7 +68,7 @@ trackerStore.getArtistStats(artist).then(data => {
   timePlayed.value = `${totalHours}h ${totalMinutes}m ${totalSeconds}s`;
 });
 
-const plays = ref<Play[]>([]);
+const plays = ref<PlayEntry[]>([]);
 trackerStore.getArtistPlays(artist).then(data => {
   plays.value = data;
 });

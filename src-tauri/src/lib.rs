@@ -9,7 +9,7 @@ use tauri_plugin_store::StoreExt;
 use zip::{result::ZipError, ZipArchive};
 
 use crate::{
-  AppError::MyError, db::{connection::init_db, queries::{get_top_items_range, get_track_plays, get_track_stats, insert_extended_history}}, file::{get_raw_history_files, remove_incoming_dir, rename_incoming_dir, rename_raw_dir, save_raw_track_data}, models::{Play, PlayCount, Stats}, processing::process_raw_history_file,
+  AppError::MyError, db::{connection::init_db, queries::{get_top_items_range, get_track_plays, get_track_stats, insert_extended_history, search_tracks, search_albums, search_artists}}, file::{get_raw_history_files, remove_incoming_dir, rename_incoming_dir, rename_raw_dir, save_raw_track_data}, models::{ItemPlayData, PlayEntry, SearchResults, Track, TrackStats}, processing::process_raw_history_file,
 };
 
 mod file;
@@ -81,7 +81,7 @@ async fn process_zip_file(app: AppHandle, file_path: String) -> Result<String, A
           let mut buf = Vec::new();
           file.read_to_end(&mut buf)?;
           let content_hash = hex::encode(Sha256::digest(&buf));
-          let data: Vec<models::RawTrackData> = serde_json::from_slice(&buf)?;
+          let data: Vec<models::RawTrackDataSpotify> = serde_json::from_slice(&buf)?;
 
           if let Err(e) = save_raw_track_data(&app, &content_hash, &data) {
             eprintln!("Error saving {} to raw history: {}", file_name, e);
@@ -148,7 +148,7 @@ async fn process_raw_history(app: AppHandle) -> Result<String, AppError> {
 }
 
 #[tauri::command]
-async fn get_top_items(app: AppHandle, item: &str, year: u32, month: Option<u32>) -> Result<Vec<PlayCount>, AppError> {
+async fn get_top_items(app: AppHandle, item: &str, year: u32, month: Option<u32>) -> Result<Vec<ItemPlayData>, AppError> {
   let conn = app.state::<Mutex<Connection>>();
   let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
 
@@ -159,7 +159,7 @@ async fn get_top_items(app: AppHandle, item: &str, year: u32, month: Option<u32>
 }
 
 #[tauri::command]
-async fn get_top_items_custom(app: AppHandle, item: &str, from_year: u32, from_month: u32, to_year: u32, to_month: u32) -> Result<Vec<PlayCount>, AppError> {
+async fn get_top_items_custom(app: AppHandle, item: &str, from_year: u32, from_month: u32, to_year: u32, to_month: u32) -> Result<Vec<ItemPlayData>, AppError> {
   let conn = app.state::<Mutex<Connection>>();
   let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
 
@@ -170,7 +170,7 @@ async fn get_top_items_custom(app: AppHandle, item: &str, from_year: u32, from_m
 }
 
 #[tauri::command]
-async fn get_track_plays_track(app: AppHandle, track: &str, artist: &str) -> Result<Vec<Play>, AppError> {
+async fn get_track_plays_track(app: AppHandle, track: &str, artist: &str) -> Result<Vec<PlayEntry>, AppError> {
   let conn = app.state::<Mutex<Connection>>();
   let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
 
@@ -178,7 +178,7 @@ async fn get_track_plays_track(app: AppHandle, track: &str, artist: &str) -> Res
 }
 
 #[tauri::command]
-async fn get_track_plays_artist(app: AppHandle, artist: &str) -> Result<Vec<Play>, AppError> {
+async fn get_track_plays_artist(app: AppHandle, artist: &str) -> Result<Vec<PlayEntry>, AppError> {
   let conn = app.state::<Mutex<Connection>>();
   let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
 
@@ -186,7 +186,7 @@ async fn get_track_plays_artist(app: AppHandle, artist: &str) -> Result<Vec<Play
 }
 
 #[tauri::command]
-async fn get_track_plays_album(app: AppHandle, album: &str, artist: &str) -> Result<Vec<Play>, AppError> {
+async fn get_track_plays_album(app: AppHandle, album: &str, artist: &str) -> Result<Vec<PlayEntry>, AppError> {
   let conn = app.state::<Mutex<Connection>>();
   let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
 
@@ -194,7 +194,7 @@ async fn get_track_plays_album(app: AppHandle, album: &str, artist: &str) -> Res
 }
 
 #[tauri::command]
-async fn get_track_stats_artist(app: AppHandle, artist: &str) -> Result<Vec<Stats>, AppError> {
+async fn get_track_stats_artist(app: AppHandle, artist: &str) -> Result<Vec<TrackStats>, AppError> {
   let conn = app.state::<Mutex<Connection>>();
   let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
 
@@ -202,12 +202,29 @@ async fn get_track_stats_artist(app: AppHandle, artist: &str) -> Result<Vec<Stat
 }
 
 #[tauri::command]
-async fn get_track_stats_album(app: AppHandle, album: &str, artist: &str) -> Result<Vec<Stats>, AppError> {
+async fn get_track_stats_album(app: AppHandle, album: &str, artist: &str) -> Result<Vec<TrackStats>, AppError> {
   let conn = app.state::<Mutex<Connection>>();
   let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
 
   get_track_stats(&conn, artist, Some(album))
 }
+
+#[tauri::command]
+async fn search_items(app: AppHandle, search_string: &str) -> Result<SearchResults, AppError> {
+  let conn = app.state::<Mutex<Connection>>();
+  let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
+
+  if search_string.len() < 3 {
+    return Err(MyError("Search string must be at least 3 characters".to_string()));
+  }
+
+  let tracks = search_tracks(&conn, search_string)?;
+  let artists = search_artists(&conn, search_string)?;
+  let albums = search_albums(&conn, search_string)?;
+
+  Ok(SearchResults { tracks, artists, albums })
+}
+
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -231,7 +248,8 @@ pub fn run() {
       get_track_plays_artist,
       get_track_plays_album,
       get_track_stats_artist,
-      get_track_stats_album
+      get_track_stats_album,
+      search_items,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

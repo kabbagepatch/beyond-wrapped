@@ -11,6 +11,7 @@ import TrackStats from "./pages/TrackStats.vue";
 import ArtistStats from "./pages/ArtistStats.vue";
 import CustomStats from "./pages/CustomStats.vue";
 import AlbumStats from "./pages/AlbumStats.vue";
+import Search from "./pages/Search.vue";
 
 const routes = [
   { path: '/year/:year', component: YearlyStats },
@@ -19,6 +20,7 @@ const routes = [
   { path: '/artists/:artist', component: ArtistStats },
   { path: '/artists/:artist/albums/:album', component: AlbumStats },
   { path: '/custom', component: CustomStats },
+  { path: '/search', component: Search },
   { path: '/settings', component: Settings },
   { path: '/', component: ExtendedStats },
 ]

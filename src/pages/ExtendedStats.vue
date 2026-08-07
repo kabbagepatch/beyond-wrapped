@@ -29,7 +29,7 @@
       </router-link>
     </button>
     <button>
-      <router-link to="/">
+      <router-link to="/search">
         <title-card
           title="Search"
           iconName="calendar"

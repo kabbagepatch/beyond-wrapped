@@ -56,7 +56,7 @@ invokeProcessing();
 
   scrollbar-width: none;
 
-  --width: 364px;
+  --width: 95vw;
 
   --primary-color: hsl(39, 59%, 78%);
   --primary-color-shadow: hsl(39, 59%, 58%);
@@ -65,18 +65,6 @@ invokeProcessing();
   --background-color: hsl(26, 42%, 19%);
   --text-color: hsl(0, 0%, 100%);
   --text-outline: hsl(26, 42%, 19%);
-}
-
- @media (min-width: 400px) {
-  :root {
-    --width: 390px;
-  }
-}
-
- @media (min-width: 460px) {
-  :root {
-    --width: 450px;
-  }
 }
 
 .container {

@@ -5,7 +5,7 @@ use std::{
 
 use tauri::{Error, Manager};
 
-use crate::models::{RawTrackData, TrackData, TrackEntryData};
+use crate::models::{RawTrackDataSpotify, RawTrackData, RawTrackEntryData};
 
 const RAW_HISTORY: &str = "raw_history";
 const RAW_HISTORY_INCOMING: &str = "raw_history.incoming";
@@ -21,14 +21,14 @@ pub fn get_raw_history_files(app: &tauri::AppHandle) -> Result<Vec<PathBuf>, Err
   Ok(raw_json_files)
 }
 
-pub fn get_raw_track_data(file_path: &Path) -> Result<Vec<TrackEntryData>, Error> {
+pub fn get_raw_track_data(file_path: &Path) -> Result<Vec<RawTrackEntryData>, Error> {
   let contents = fs::read(file_path)?;
-  let raw_track_data: Vec<RawTrackData> = serde_json::from_slice(&contents)?;
-  let track_data: Vec<TrackEntryData> = raw_track_data
+  let raw_track_data: Vec<RawTrackDataSpotify> = serde_json::from_slice(&contents)?;
+  let track_data: Vec<RawTrackEntryData> = raw_track_data
     .into_iter()
-    .filter_map(|e: RawTrackData| {
-      return Some(TrackEntryData {
-        track: TrackData {
+    .filter_map(|e: RawTrackDataSpotify| {
+      return Some(RawTrackEntryData {
+        track: RawTrackData {
           id: e.spotify_track_uri?,
           track_name: e.master_metadata_track_name?,
           artist_name: e.master_metadata_album_artist_name?,
@@ -46,7 +46,7 @@ pub fn get_raw_track_data(file_path: &Path) -> Result<Vec<TrackEntryData>, Error
 pub fn save_raw_track_data(
   app: &tauri::AppHandle,
   file_name: &str,
-  data: &Vec<RawTrackData>,
+  data: &Vec<RawTrackDataSpotify>,
 ) -> Result<(), Error> {
   let dir = app.path().app_data_dir()?.join(RAW_HISTORY_INCOMING);
   fs::create_dir_all(&dir)?;

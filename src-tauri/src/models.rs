@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RawTrackData {
+pub struct RawTrackDataSpotify {
   pub spotify_track_uri: Option<String>,
   pub master_metadata_track_name: Option<String>,
   pub master_metadata_album_artist_name: Option<String>,
@@ -11,7 +11,7 @@ pub struct RawTrackData {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct TrackData {
+pub struct RawTrackData {
   pub id: String,
   pub track_name: String,
   pub artist_name: String,
@@ -19,8 +19,8 @@ pub struct TrackData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrackEntryData {
-  pub track: TrackData,
+pub struct RawTrackEntryData {
+  pub track: RawTrackData,
   pub time_stamp: String,
   pub ms_played: i32,
 }
@@ -33,7 +33,35 @@ pub struct RawFile {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct PlayCount {
+pub struct Track {
+  pub name: String,
+  pub artist: String,
+  pub album: String,
+  pub play_count: i32,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Artist {
+  pub name: String,
+  pub play_count: i32,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Album {
+  pub name: String,
+  pub artist: String,
+  pub play_count: i32,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SearchResults {
+  pub tracks: Vec<Track>,
+  pub artists: Vec<Artist>,
+  pub albums: Vec<Album>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ItemPlayData {
   pub primary: String,
   pub secondary: Option<String>,
   pub play_count: i32,
@@ -41,7 +69,7 @@ pub struct PlayCount {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Play {
+pub struct PlayEntry {
   pub track: String,
   pub artist: String,
   pub album: String,
@@ -50,7 +78,7 @@ pub struct Play {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Stats {
+pub struct TrackStats {
   pub track: String,
   pub artist: String,
   pub album: String,

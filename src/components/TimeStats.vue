@@ -59,7 +59,7 @@
 import { useRouter } from "vue-router";
 import Stats from "./Stats.vue";
 import Dropdown from "./Dropdown.vue";
-import { PlayCount } from "../stores/tracker";
+import { ItemPlayData } from "../stores/tracker";
 
 const router = useRouter();
 
@@ -74,9 +74,9 @@ const props = defineProps<{
   year?: string,
   totalPlayCount: number,
   totalTime: number,
-  trackPlays: PlayCount[],
-  artistPlays: PlayCount[],
-  albumPlays: PlayCount[],
+  trackPlays: ItemPlayData[],
+  artistPlays: ItemPlayData[],
+  albumPlays: ItemPlayData[],
   back?: () => void,
   forward?: () => void,
 }>();

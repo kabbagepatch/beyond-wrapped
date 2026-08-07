@@ -2,21 +2,21 @@ import { invoke } from '@tauri-apps/api/core';
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-export type PlayCount = {
+export type ItemPlayData = {
   primary: string;
   secondary?: string;
   playCount: number;
   msPlayed: number;
 }
 type TrackCounts = {
-  tracks?: PlayCount[],
-  artists?: PlayCount[],
-  albums?: PlayCount[]
+  tracks?: ItemPlayData[],
+  artists?: ItemPlayData[],
+  albums?: ItemPlayData[]
 };
 type YearlyTrackCount = { [year: number]: TrackCounts; };
 type MonthlyTrackCount = { [year: number]: { [month: string]: TrackCounts } };
 
-export type Play = {
+export type PlayEntry = {
   trackName: string;
   artistName: string;
   albumName: string;
@@ -33,24 +33,33 @@ export type TrackStats = {
   firstPlay: string;
 }
 
+export type Track = { name: string; artist: string; album: string; playCount: number };
+export type Artist = { name: string; playCount: number };
+export type Album = { name: string; artist: string; playCount: number };
+export type SearchResults = {
+  tracks: Track[];
+  artists: Artist[];
+  albums: Album[];
+}
+
 export const useTrackerStore = defineStore('tracker', () => {
   const yearlyTotals = ref<YearlyTrackCount>({});
   const monthlyTotals = ref<MonthlyTrackCount>({});
 
-  const getTopTracks = async (year: number, month?: number): Promise<PlayCount[]> => {
+  const getTopTracks = async (year: number, month?: number): Promise<ItemPlayData[]> => {
     return getTopItems('tracks', year, month);
   }
 
-  const getTopArtists = async (year: number, month?: number): Promise<PlayCount[]> => {
+  const getTopArtists = async (year: number, month?: number): Promise<ItemPlayData[]> => {
     return getTopItems('artists', year, month);
   }
 
-  const getTopAlbums = async (year: number, month?: number): Promise<PlayCount[]> => {
+  const getTopAlbums = async (year: number, month?: number): Promise<ItemPlayData[]> => {
     return getTopItems('albums', year, month);
   }
 
-  const playCountMap = (result: any): PlayCount[] => (
-    result.map((i: any) : PlayCount => ({
+  const playCountMap = (result: any): ItemPlayData[] => (
+    result.map((i: any) : ItemPlayData => ({
       primary: i.primary,
       secondary: i.secondary,
       playCount: i.play_count,
@@ -58,7 +67,7 @@ export const useTrackerStore = defineStore('tracker', () => {
     }))
   );
 
-  const getTopItems = async (item : 'tracks' | 'artists' | 'albums', year: number, month?: number): Promise<PlayCount[]> => {
+  const getTopItems = async (item : 'tracks' | 'artists' | 'albums', year: number, month?: number): Promise<ItemPlayData[]> => {
     if (month) {
       if (monthlyTotals.value[year]?.[month]?.[item]?.length) {
         return monthlyTotals.value[year][month][item];
@@ -85,7 +94,7 @@ export const useTrackerStore = defineStore('tracker', () => {
     return mapped;
   }
 
-  const getTopItemsCustom = async (item : 'tracks' | 'artists' | 'albums', from : string, to : string): Promise<PlayCount[]> => {
+  const getTopItemsCustom = async (item : 'tracks' | 'artists' | 'albums', from : string, to : string): Promise<ItemPlayData[]> => {
     const fromParts = from.split('-');
     const fromMonth = parseInt(fromParts[0], 10);
     const fromYear = parseInt(fromParts[1], 10);
@@ -97,8 +106,8 @@ export const useTrackerStore = defineStore('tracker', () => {
     return playCountMap(result)
   }
 
-  const playMap = (result: any): Play[] => (
-    result.map((i: any) : Play => ({
+  const playMap = (result: any): PlayEntry[] => (
+    result.map((i: any) : PlayEntry => ({
       trackName: i.track,
       artistName: i.artist,
       albumName: i.album,
@@ -107,20 +116,20 @@ export const useTrackerStore = defineStore('tracker', () => {
     }))
   );
 
-  const getTrackPlays = async (track: string, artist: string): Promise<Play[]> => {
-    const result: any = await invoke('get_track_plays_track',  { track, artist });
+  const getTrackPlays = async (track: string, artist: string): Promise<PlayEntry[]> => {
+    const result: any = await invoke('get_track_plays_track', { track, artist });
 
     return playMap(result);
   }
 
-  const getArtistPlays = async (artist: string): Promise<Play[]> => {
-    const result: any = await invoke('get_track_plays_artist',  { artist });
+  const getArtistPlays = async (artist: string): Promise<PlayEntry[]> => {
+    const result: any = await invoke('get_track_plays_artist', { artist });
 
     return playMap(result);
   }
 
-  const getAlbumPlays = async (album: string, artist: string): Promise<Play[]> => {
-    const result: any = await invoke('get_track_plays_album',  { album, artist });
+  const getAlbumPlays = async (album: string, artist: string): Promise<PlayEntry[]> => {
+    const result: any = await invoke('get_track_plays_album', { album, artist });
 
     return playMap(result);
   }
@@ -137,15 +146,21 @@ export const useTrackerStore = defineStore('tracker', () => {
   );
 
   const getArtistStats = async(artist: string): Promise<TrackStats[]> => {
-    const result: any = await invoke('get_track_stats_artist',  { artist });
+    const result: any = await invoke('get_track_stats_artist', { artist });
 
     return statsMap(result);
   }
 
   const getAlbumStats = async(album: string, artist: string): Promise<TrackStats[]> => {
-    const result: any = await invoke('get_track_stats_album',  { album, artist });
+    const result: any = await invoke('get_track_stats_album', { album, artist });
 
     return statsMap(result);
+  }
+
+  const searchItems = async(searchString: string): Promise<SearchResults> => {
+    const result: any = await invoke('search_items', { searchString });
+
+    return result;
   }
 
   return {
@@ -158,5 +173,6 @@ export const useTrackerStore = defineStore('tracker', () => {
     getArtistStats,
     getAlbumPlays,
     getAlbumStats,
+    searchItems,
   }
 });

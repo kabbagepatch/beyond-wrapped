@@ -22,16 +22,16 @@ import { ref } from "vue";
 import { useRoute } from "vue-router";
 import Header from "../Header.vue";
 import TimeStats from "../components/TimeStats.vue";
-import { PlayCount, useTrackerStore } from "../stores/tracker.ts";
+import { ItemPlayData, useTrackerStore } from "../stores/tracker.ts";
 
 const trackerStore = useTrackerStore();
 const route = useRoute();
 const from = route.query.from as string || '9-2012';
 const to = route.query.to as string || '12-2025';
 
-const trackPlays = ref<PlayCount[]>([]);
-const artistPlays = ref<PlayCount[]>([]);
-const albumPlays = ref<PlayCount[]>([]);
+const trackPlays = ref<ItemPlayData[]>([]);
+const artistPlays = ref<ItemPlayData[]>([]);
+const albumPlays = ref<ItemPlayData[]>([]);
 const totalPlayCount = ref(0);
 const totalTime = ref(0);
 
