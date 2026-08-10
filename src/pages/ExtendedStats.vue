@@ -2,7 +2,7 @@
   <div class="container">
     <Header :rightButtonClick="goToSettings" />
     <button>
-      <router-link to="/year/2025">
+      <router-link :to="`/year/${toYear}`">
         <title-card
           title="Yearly"
           iconName="year"
@@ -11,7 +11,7 @@
       </router-link>
     </button>
     <button>
-      <router-link to="/year/2025/12">
+      <router-link :to="`/year/${toYear}/${toMonth}`">
         <title-card
           title="Monthly"
           iconName="month"
@@ -20,7 +20,7 @@
       </router-link>
     </button>
     <button>
-      <router-link to="/custom?from=1-2020&to=12-2025">
+      <router-link :to="`/custom?from=${fromMonth}-${fromYear}&to=${toMonth}-${toYear}`">
         <title-card
           title="Custom"
           iconName="calendar"
@@ -41,14 +41,35 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from "vue";
 import { useRouter } from "vue-router";
 import TitleCard from "../components/TitleCard.vue";
 import Header from "../Header.vue";
+import { invoke } from "@tauri-apps/api/core";
 
 const router = useRouter();
 const goToSettings = () => {
   router.push('/settings');
 }
+
+const fromMonth = ref(1);
+const fromYear = ref(2020);
+const toMonth = ref(12);
+const toYear = ref(2025);
+invoke('get_bounds').then((r: any) => {
+  const minTS = r.min_timestamp;
+  const minDate = new Date(minTS);
+  const maxTS = r.max_timestamp;
+  const maxDate = new Date(maxTS);
+
+  fromMonth.value = minDate.getMonth() + 1;
+  fromYear.value = minDate.getFullYear();
+  toMonth.value = maxDate.getMonth() + 1;
+  toYear.value = maxDate.getFullYear();
+}).catch(e => {
+  console.log(e);
+});
+
 </script>
 
 <style scoped>

@@ -9,7 +9,14 @@ use tauri_plugin_store::StoreExt;
 use zip::{result::ZipError, ZipArchive};
 
 use crate::{
-  AppError::MyError, db::{connection::init_db, queries::{get_top_items_range, get_track_plays, get_track_stats, insert_extended_history, search_tracks, search_albums, search_artists}}, file::{get_raw_history_files, remove_incoming_dir, rename_incoming_dir, rename_raw_dir, save_raw_track_data}, models::{ItemPlayData, PlayEntry, SearchResults, Track, TrackStats}, processing::process_raw_history_file,
+  AppError::MyError,
+  db::{
+    connection::init_db,
+    queries::{get_play_bounds, get_top_items_range, get_track_plays, get_track_stats, insert_extended_history, search_albums, search_artists, search_tracks}
+  },
+  file::{get_raw_history_files, remove_incoming_dir, rename_incoming_dir, rename_raw_dir, save_raw_track_data},
+  models::{Bounds, ItemPlayData, PlayEntry, SearchResults, TrackStats},
+  processing::process_raw_history_file,
 };
 
 mod file;
@@ -225,6 +232,16 @@ async fn search_items(app: AppHandle, search_string: &str) -> Result<SearchResul
   Ok(SearchResults { tracks, artists, albums })
 }
 
+#[tauri::command]
+async fn get_bounds(app: AppHandle) -> Result<Bounds, AppError> {
+  let conn = app.state::<Mutex<Connection>>();
+  let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
+
+  let result = get_play_bounds(&conn)?.unwrap_or_default();
+
+  Ok(result)
+}
+
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -250,6 +267,7 @@ pub fn run() {
       get_track_stats_artist,
       get_track_stats_album,
       search_items,
+      get_bounds,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

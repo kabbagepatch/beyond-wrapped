@@ -86,3 +86,9 @@ pub struct TrackStats {
   pub ms_played:  i64,
   pub first_play: String,
 }
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Bounds {
+  pub min_timestamp: String,
+  pub max_timestamp: String,
+}

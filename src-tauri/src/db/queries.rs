@@ -1,6 +1,6 @@
 use rusqlite::{Connection, params};
 
-use crate::{AppError::{self}, db::connection::{execute, query_map, query_row}, models::{Album, Artist, ItemPlayData, PlayEntry, RawFile, RawTrackEntryData, Track, TrackStats}};
+use crate::{AppError::{self}, db::connection::{execute, query_map, query_row}, models::{Album, Artist, Bounds, ItemPlayData, PlayEntry, RawFile, RawTrackEntryData, Track, TrackStats}};
 
 pub fn get_extended_history_file_info(conn: &Connection, content_hash: &str) -> Result<Option<RawFile>, AppError> {
   let sql = "SELECT content_hash, filename, processed_at FROM extended_history_files where content_hash = ?1";
@@ -201,5 +201,16 @@ pub fn search_albums(conn: &Connection, search_string: &str) -> Result<Vec<Album
 
   query_map(conn, sql, params![format!("%{search_string}%")],|row| Ok(
     Album { name: row.get(0)?, artist: row.get(1)?, play_count: row.get(2)? }
+  ))
+}
+
+pub fn get_play_bounds(conn: &Connection) -> Result<Option<Bounds>, AppError> {
+  let sql = "
+    SELECT MIN(p.time_stamp) as min_timestamp, MAX(p.time_stamp) as max_timestamp
+    FROM plays p
+  ";
+
+  query_row(conn, sql, [], |row| Ok(
+    Bounds { min_timestamp: row.get(0)?, max_timestamp: row.get(1)? }
   ))
 }
