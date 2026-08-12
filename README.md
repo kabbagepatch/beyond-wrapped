@@ -19,12 +19,11 @@ The user uploads their extended history zip file they get from Spotify directly 
 The application displays aggregated information such as total number of tracks/time listened over time, along with a list of Top Tracks/Artists/Albums for each year/month. The user can also see specific stats about a track or an artist, such as first/total listens, discovery date, etc
 
 ### Screenshots
-
-<img width="300" height="450" alt="image" src="https://github.com/user-attachments/assets/0731d3d3-2333-4dcb-95bc-52efcecd4117" />
-<img width="300" height="450" alt="image" src="https://github.com/user-attachments/assets/30192af0-3111-4609-966b-ad7cc438d8ca" />
+<img height="500" alt="yearly stats" src="https://github.com/user-attachments/assets/ba5a5dbc-4c99-47f3-8ee5-cacb53f7849f" />
+<img height="500" alt="monthly stats" src="https://github.com/user-attachments/assets/8744ea3b-cf2b-421a-9a26-7ec04eca844f" />
 <br>
-<img width="300" height="450" alt="image" src="https://github.com/user-attachments/assets/41e7ac6b-1395-45f0-8d7c-b40ff592be9d" />
-<img width="300" height="450" alt="image" src="https://github.com/user-attachments/assets/edb4c6f0-a36e-4c24-bbad-4186cbc3af12" />
+<img height="500" alt="custom stats" src="https://github.com/user-attachments/assets/85c635e6-2cf6-4084-b828-700e0dd624b1" />
+<img height="500" alt="artist stats" src="https://github.com/user-attachments/assets/14355f1c-c36b-4f7f-9af4-3a17e3ad788b" />
 
 ### Technical Implementation
 
