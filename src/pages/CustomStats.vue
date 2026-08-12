@@ -11,6 +11,7 @@
       :trackPlays="trackPlays"
       :artistPlays="artistPlays"
       :albumPlays="albumPlays"
+      :counts="playCounts"
       :totalPlayCount="totalPlayCount"
       :totalTime="totalTime"
     />
@@ -32,6 +33,7 @@ const to = route.query.to as string || '12-2025';
 const trackPlays = ref<ItemPlayData[]>([]);
 const artistPlays = ref<ItemPlayData[]>([]);
 const albumPlays = ref<ItemPlayData[]>([]);
+const playCounts = ref<{ label: string, count: number }[]>([]);
 const totalPlayCount = ref(0);
 const totalTime = ref(0);
 
@@ -47,15 +49,19 @@ trackerStore.getTopItemsCustom('tracks', from, to).then(data => {
 
   totalPlayCount.value = playCount;
   totalTime.value = time;
-});
+}).catch(e => { console.log(e) });
 
 trackerStore.getTopItemsCustom('artists', from, to).then(data => {
   artistPlays.value = data;
-});
+}).catch(e => { console.log(e) });
 
 trackerStore.getTopItemsCustom('albums', from, to).then(data => {
   albumPlays.value = data;
-});
+}).catch(e => { console.log(e) });
+
+trackerStore.getCustomCounts(from, to).then(data => {
+  playCounts.value = data;
+}).catch(e => { console.log(e) });
 
 </script>
 

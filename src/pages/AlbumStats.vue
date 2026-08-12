@@ -4,8 +4,8 @@
     <div class="summary">
       <div>
         Artist:
-        <router-link :to="`/artists/${encodeURIComponent(plays[0].artistName)}`">
-          <span class="summary-title">{{ plays[0].artistName }}</span>
+        <router-link :to="`/artists/${encodeURIComponent(plays?.[0]?.artistName)}`">
+          <span class="summary-title">{{ plays?.[0]?.artistName }}</span>
         </router-link>
       </div>
       <div>
@@ -15,6 +15,7 @@
     </div>
     <Stats
       v-if="album"
+      :counts="playCounts"
       :summary="[
         { key: 'Distinct tracks played', value: stats.length },
         { key: 'Total number of plays', value: totalPlays },
@@ -30,7 +31,7 @@
         right: new Date(track.firstPlay).toLocaleDateString('en-US', dateOptions),
         link: `/artists/${encodeURIComponent(track.artistName)}/tracks/${encodeURIComponent(track.trackName)}`
       })) }"
-      :cardThree="{ title: 'Track Plays', entries: plays.map(play => ({
+      :cardThree="{ title: 'All Plays', entries: plays.map(play => ({
         left: play.trackName,
         right: new Date(play.timeStamp).toLocaleDateString('en-US', dateOptions),
         link: `/artists/${encodeURIComponent(play.artistName)}/tracks/${encodeURIComponent(play.trackName)}`
@@ -58,6 +59,8 @@ const stats = ref<TrackStats[]>([]);
 const dateSortedStats = ref<TrackStats[]>([]);
 const totalPlays = ref<number>(0);
 const timePlayed = ref<string>('');
+const playCounts = ref<{ label: string, count: number }[]>([]);
+
 trackerStore.getAlbumStats(album, artist).then(data => {
   stats.value = data;
 
@@ -75,12 +78,16 @@ trackerStore.getAlbumStats(album, artist).then(data => {
   const totalMinutes = Math.floor((totalMsPlayed % 3600000) / 60000);
   const totalSeconds = Math.floor((totalMsPlayed % 60000) / 1000);
   timePlayed.value = `${totalHours}h ${totalMinutes}m ${totalSeconds}s`;
-});
+}).catch(e => { console.log(e) });
 
 const plays = ref<PlayEntry[]>([]);
 trackerStore.getAlbumPlays(album, artist).then(data => {
   plays.value = data;
-});
+}).catch(e => { console.log(e) });
+
+trackerStore.getAlbumPlayCounts(album, artist).then(data => {
+  playCounts.value = data;
+}).catch(e => { console.log(e) });
 
 </script>
 

@@ -9,14 +9,9 @@ use tauri_plugin_store::StoreExt;
 use zip::{result::ZipError, ZipArchive};
 
 use crate::{
-  AppError::MyError,
-  db::{
-    connection::init_db,
-    queries::{get_play_bounds, get_top_items_range, get_track_plays, get_track_stats, insert_extended_history, search_albums, search_artists, search_tracks}
-  },
-  file::{get_raw_history_files, remove_incoming_dir, rename_incoming_dir, rename_raw_dir, save_raw_track_data},
-  models::{Bounds, ItemPlayData, PlayEntry, SearchResults, TrackStats},
-  processing::process_raw_history_file,
+  AppError::MyError, db::{
+    connection::init_db, queries::{self, get_track_plays, get_track_stats, insert_extended_history, search_albums, search_artists, search_tracks}
+  }, file::{get_raw_history_files, remove_incoming_dir, rename_incoming_dir, rename_raw_dir, save_raw_track_data}, models::{Bounds, ItemPlayData, PlayEntry, SearchResults, TrackStats}, processing::process_raw_history_file,
 };
 
 mod file;
@@ -162,7 +157,7 @@ async fn get_top_items(app: AppHandle, item: &str, year: u32, month: Option<u32>
   let from = if month.is_some() { let month = month.unwrap(); format!("{year}-{month:02}-01T00:00:00Z") } else { format!("{year}-01-01T00:00:00Z") };
   let to = if month.is_some() { let month = month.unwrap(); format!("{year}-{month:02}-31T23:59:59Z") } else { format!("{year}-12-31T23:59:59Z") };
 
-  get_top_items_range(&conn, item, &from, &to)
+  queries::get_top_items(&conn, item, &from, &to)
 }
 
 #[tauri::command]
@@ -173,7 +168,7 @@ async fn get_top_items_custom(app: AppHandle, item: &str, from_year: u32, from_m
   let from = format!("{from_year}-{from_month:02}-01T00:00:00Z");
   let to = format!("{to_year}-{to_month:02}-31T23:59:59Z");
 
-  get_top_items_range(&conn, item, &from, &to)
+  queries::get_top_items(&conn, item, &from, &to)
 }
 
 #[tauri::command]
@@ -213,7 +208,7 @@ async fn get_track_stats_album(app: AppHandle, album: &str, artist: &str) -> Res
   let conn = app.state::<Mutex<Connection>>();
   let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
 
-  get_track_stats(&conn, artist, Some(album))
+  queries::get_track_stats(&conn, artist, Some(album))
 }
 
 #[tauri::command]
@@ -233,15 +228,55 @@ async fn search_items(app: AppHandle, search_string: &str) -> Result<SearchResul
 }
 
 #[tauri::command]
-async fn get_bounds(app: AppHandle) -> Result<Bounds, AppError> {
+async fn get_play_bounds(app: AppHandle) -> Result<Bounds, AppError> {
   let conn = app.state::<Mutex<Connection>>();
   let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
 
-  let result = get_play_bounds(&conn)?.unwrap_or_default();
+  let result = queries::get_play_bounds(&conn)?.unwrap_or_default();
 
   Ok(result)
 }
 
+#[tauri::command]
+async fn get_monthly_play_counts(app: AppHandle, year: u32) -> Result<Vec<ItemPlayData>, AppError> {
+  let conn = app.state::<Mutex<Connection>>();
+  let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
+
+  let from = format!("{year}-01-01T00:00:00Z");
+  let to = format!("{year}-12-31T23:59:59Z");
+
+  queries::get_play_counts(&conn, "month", &from, &to)
+}
+
+#[tauri::command]
+async fn get_daily_play_counts(app: AppHandle, year: u32, month: u32) -> Result<Vec<ItemPlayData>, AppError> {
+  let conn = app.state::<Mutex<Connection>>();
+  let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
+
+  let from = format!("{year}-{month:02}-01T00:00:00Z");
+  let to = format!("{year}-{month:02}-31T23:59:59Z");
+
+  queries::get_play_counts(&conn, "day", &from, &to)
+}
+
+#[tauri::command]
+async fn get_play_counts(app: AppHandle, freq: &str, from_year: u32, from_month: u32, to_year: u32, to_month: u32) -> Result<Vec<ItemPlayData>, AppError> {
+  let conn = app.state::<Mutex<Connection>>();
+  let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
+
+  let from = format!("{from_year}-{from_month:02}-01T00:00:00Z");
+  let to = format!("{to_year}-{to_month:02}-31T23:59:59Z");
+
+  queries::get_play_counts(&conn, freq, &from, &to)
+}
+
+#[tauri::command]
+async fn get_item_play_counts(app: AppHandle, freq: &str, track: Option<&str>, artist: &str, album: Option<&str>) -> Result<Vec<ItemPlayData>, AppError> {
+  let conn = app.state::<Mutex<Connection>>();
+  let conn = conn.lock().unwrap_or_else(|e| e.into_inner());
+
+  queries::get_item_play_counts(&conn, freq, track, artist, album)
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -267,7 +302,11 @@ pub fn run() {
       get_track_stats_artist,
       get_track_stats_album,
       search_items,
-      get_bounds,
+      get_play_bounds,
+      get_monthly_play_counts,
+      get_daily_play_counts,
+      get_play_counts,
+      get_item_play_counts,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

@@ -72,7 +72,7 @@ pub fn insert_play(conn: &Connection, entry: &RawTrackEntryData) -> Result<usize
   )
 }
 
-pub fn get_top_items_range(conn: &Connection, item: &str, from: &str, to: &str) -> Result<Vec<ItemPlayData>, AppError> {
+pub fn get_top_items(conn: &Connection, item: &str, from: &str, to: &str) -> Result<Vec<ItemPlayData>, AppError> {
   let (select, group_by) = match item {
     "tracks"  => (
       "t.name, t.artist",
@@ -212,5 +212,54 @@ pub fn get_play_bounds(conn: &Connection) -> Result<Option<Bounds>, AppError> {
 
   query_row(conn, sql, [], |row| Ok(
     Bounds { min_timestamp: row.get(0)?, max_timestamp: row.get(1)? }
+  ))
+}
+
+pub fn get_play_counts(conn: &Connection, freq: &str, from: &str, to: &str) -> Result<Vec<ItemPlayData>, AppError> {
+  let substr = if freq == "day" {
+    "SUBSTR(p.time_stamp, 1, 10)"
+  } else if freq == "month" {
+    "SUBSTR(p.time_stamp, 1, 7)"
+  } else {
+    "SUBSTR(p.time_stamp, 1, 4)"
+  };
+  let sql = format!("
+    SELECT {substr} AS freq, COUNT(*) as play_count, SUM(p.ms_played) AS ms_played
+    FROM plays p
+    WHERE p.time_stamp BETWEEN ?1 AND ?2
+    GROUP BY freq
+    ORDER BY freq ASC
+  ");
+
+  query_map(conn, &sql, params![from, to],|row| Ok(
+    ItemPlayData { primary: row.get(0)?, secondary: None, play_count: row.get(1)?, ms_played: row.get(2)? }
+  ))
+}
+
+pub fn get_item_play_counts(conn: &Connection, freq: &str, track: Option<&str>, artist: &str, album: Option<&str>) -> Result<Vec<ItemPlayData>, AppError> {
+  let (where_sql, params) = if track.is_none() && album.is_none() {
+    ("t.artist = ?1", params![artist])
+  } else if track.is_some() {
+    ("t.name = ?1 AND t.artist = ?2", params![track.unwrap(), artist])
+  } else {
+    ("t.album = ?1 AND t.artist = ?2", params![album.unwrap(), artist])
+  };
+
+  let substr = if freq == "month" {
+    "SUBSTR(p.time_stamp, 1, 7)"
+  } else {
+    "SUBSTR(p.time_stamp, 1, 4)"
+  };
+
+  let sql = format!("
+    SELECT {substr} AS freq, COUNT(*) as play_count, SUM(p.ms_played) AS ms_played
+    FROM plays p JOIN tracks t ON p.track_id = t.spotify_id
+    WHERE {where_sql}
+    GROUP BY freq
+    ORDER BY freq ASC
+  ");
+
+  query_map(conn, &sql, params,|row| Ok(
+    ItemPlayData { primary: row.get(0)?, secondary: None, play_count: row.get(1)?, ms_played: row.get(2)? }
   ))
 }

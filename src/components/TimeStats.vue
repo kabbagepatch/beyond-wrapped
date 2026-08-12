@@ -27,6 +27,7 @@
         { key: 'Distinct Artists', value: artistPlays.length },
         { key: 'Distinct Albums', value: albumPlays.length },
       ]"
+      :counts="counts"
       :cardOne="{
         title: 'Top Tracks',
         entries: trackPlays.map(track => ({
@@ -77,6 +78,7 @@ const props = defineProps<{
   trackPlays: ItemPlayData[],
   artistPlays: ItemPlayData[],
   albumPlays: ItemPlayData[],
+  counts?: { label: string, count: number }[],
   back?: () => void,
   forward?: () => void,
 }>();

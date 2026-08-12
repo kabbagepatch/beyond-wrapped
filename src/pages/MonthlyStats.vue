@@ -9,6 +9,7 @@
       :albumPlays="albumPlays"
       :totalPlayCount="totalPlayCount"
       :totalTime="totalTime"
+      :counts="dailyCounts"
       :back="back"
       :forward="forward"
     />
@@ -32,6 +33,7 @@ const year = route.params.year as string;
 const trackPlays = ref<ItemPlayData[]>([]);
 const artistPlays = ref<ItemPlayData[]>([]);
 const albumPlays = ref<ItemPlayData[]>([]);
+const dailyCounts = ref<{ label: string, count: number }[]>([]);
 const totalPlayCount = ref(0);
 const totalTime = ref(0);
 
@@ -47,15 +49,19 @@ trackerStore.getTopTracks(parseInt(year, 10), parseInt(month, 10)).then(data => 
 
   totalPlayCount.value = playCount;
   totalTime.value = time;
-});
+}).catch(e => { console.log(e) });
 
 trackerStore.getTopArtists(parseInt(year, 10), parseInt(month, 10)).then(data => {
   artistPlays.value = data;
-});
+}).catch(e => { console.log(e) });
 
 trackerStore.getTopAlbums(parseInt(year, 10), parseInt(month, 10)).then(data => {
   albumPlays.value = data;
-});
+}).catch(e => { console.log(e) });
+
+trackerStore.getDailyCounts(parseInt(year, 10), parseInt(month, 10)).then(data => {
+  dailyCounts.value = data;
+}).catch(e => { console.log(e) });
 
 const forward = () => {
   let newYear = parseInt(year, 10);

@@ -12,6 +12,7 @@
         { key: 'Total number of plays', value: totalPlays },
         { key: 'Total Time played', value: timePlayed },
       ]"
+      :counts="playCounts"
       :cardOne="{ title: 'Top Tracks', entries: stats.map(track => ({
         left: track.trackName,
         right: track.playCount,
@@ -22,7 +23,7 @@
         right: new Date(track.firstPlay).toLocaleDateString('en-US', dateOptions),
         link: `/artists/${encodeURIComponent(track.artistName)}/tracks/${encodeURIComponent(track.trackName)}`
       })) }"
-      :cardThree="{ title: 'Track Plays', entries: plays.map(play => ({
+      :cardThree="{ title: 'All Plays', entries: plays.map(play => ({
         left: play.trackName,
         right: new Date(play.timeStamp).toLocaleDateString('en-US', dateOptions),
         link: `/artists/${encodeURIComponent(play.artistName)}/tracks/${encodeURIComponent(play.trackName)}`
@@ -49,6 +50,8 @@ const stats = ref<TrackStats[]>([]);
 const dateSortedStats = ref<TrackStats[]>([]);
 const totalPlays = ref<number>(0);
 const timePlayed = ref<string>('');
+const playCounts = ref<{ label: string, count: number }[]>([]);
+
 trackerStore.getArtistStats(artist).then(data => {
   stats.value = data;
 
@@ -66,12 +69,16 @@ trackerStore.getArtistStats(artist).then(data => {
   const totalMinutes = Math.floor((totalMsPlayed % 3600000) / 60000);
   const totalSeconds = Math.floor((totalMsPlayed % 60000) / 1000);
   timePlayed.value = `${totalHours}h ${totalMinutes}m ${totalSeconds}s`;
-});
+}).catch(e => { console.log(e) });
 
 const plays = ref<PlayEntry[]>([]);
 trackerStore.getArtistPlays(artist).then(data => {
   plays.value = data;
-});
+}).catch(e => { console.log(e) });
+
+trackerStore.getArtistPlayCounts(artist).then(data => {
+  playCounts.value = data;
+}).catch(e => { console.log(e) });
 
 </script>
 

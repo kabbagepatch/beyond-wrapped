@@ -163,6 +163,85 @@ export const useTrackerStore = defineStore('tracker', () => {
     return result;
   }
 
+  const getMonthlyCounts = async(year: number): Promise<{ label: string, count: number }[]> => {
+    const result: any = await invoke('get_monthly_play_counts', { year });
+
+    const months = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+    return months.map((label, index) => {
+      const month = index + 1;
+      const found = result.find(
+        (r: any) => parseInt(r.primary.split('-')[1], 10) === month
+      );
+
+      return {
+        label,
+        count: found?.play_count ?? 0,
+      };
+    });
+  }
+
+  const getDailyCounts = async(year: number, month: number): Promise<{ label: string, count: number }[]> => {
+    const result: any = await invoke('get_daily_play_counts', { year, month });
+
+    return result.map((r: any) => {
+      return {
+        label: r.primary.split('-')[2],
+        count: r.play_count,
+      };
+    });
+  }
+
+  const yearlyCountMap = (result: any) => {
+    return result.map((r: any) => {
+      return {
+        label: r.primary,
+        count: r.play_count,
+      };
+    });
+  }
+
+  const getCustomCounts = async(from: string, to: string): Promise<{ label: string, count: number }[]> => {
+    const fromParts = from.split('-');
+    const fromMonth = parseInt(fromParts[0], 10);
+    const fromYear = parseInt(fromParts[1], 10);
+    const toParts = to.split('-');
+    const toMonth = parseInt(toParts[0], 10);
+    const toYear = parseInt(toParts[1], 10);
+
+    if (fromYear === toYear) {
+      const months = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+      const result: any = await invoke('get_play_counts', { freq: 'month', fromYear, fromMonth, toYear, toMonth });
+      return result.map((r: any) => {
+        return {
+          label: months[parseInt(r.primary.split('-')[1], 10) - 1],
+          count: r.play_count,
+        };
+      });
+    } else {
+      const result: any = await invoke('get_play_counts', { freq: 'year', fromYear, fromMonth, toYear, toMonth });
+
+      return yearlyCountMap(result);
+    }
+  }
+
+  const getTrackPlayCounts = async(track: string, artist: string): Promise<{ label: string, count: number }[]> => {
+    const result: any = await invoke('get_item_play_counts', { freq: "year", artist, track });
+
+    return yearlyCountMap(result);
+  }
+
+  const getArtistPlayCounts = async(artist: string): Promise<{ label: string, count: number }[]> => {
+    const result: any = await invoke('get_item_play_counts', { freq: "year", artist });
+
+    return yearlyCountMap(result);
+  }
+
+  const getAlbumPlayCounts = async(album: string, artist: string): Promise<{ label: string, count: number }[]> => {
+    const result: any = await invoke('get_item_play_counts', { freq: "year", artist, album });
+
+    return yearlyCountMap(result);
+  }
+
   return {
     getTopTracks,
     getTopArtists,
@@ -174,5 +253,11 @@ export const useTrackerStore = defineStore('tracker', () => {
     getAlbumPlays,
     getAlbumStats,
     searchItems,
+    getMonthlyCounts,
+    getDailyCounts,
+    getCustomCounts,
+    getTrackPlayCounts,
+    getArtistPlayCounts,
+    getAlbumPlayCounts,
   }
 });

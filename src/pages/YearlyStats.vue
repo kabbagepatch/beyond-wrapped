@@ -8,6 +8,7 @@
       :albumPlays="albumPlays"
       :totalPlayCount="totalPlayCount"
       :totalTime="totalTime"
+      :counts="monthlyCounts"
       :back="back"
       :forward="forward"
     />
@@ -30,6 +31,7 @@ const trackerStore = useTrackerStore();
 const trackPlays = ref<ItemPlayData[]>([]);
 const artistPlays = ref<ItemPlayData[]>([]);
 const albumPlays = ref<ItemPlayData[]>([]);
+const monthlyCounts = ref<{ label: string, count: number }[]>([]);
 const totalPlayCount = ref(0);
 const totalTime = ref(0);
 
@@ -45,15 +47,19 @@ trackerStore.getTopTracks(parseInt(year, 10)).then(data => {
 
   totalPlayCount.value = playCount;
   totalTime.value = time;
-});
+}).catch(e => { console.log(e) });
 
 trackerStore.getTopArtists(parseInt(year, 10)).then(data => {
   artistPlays.value = data;
-});
+}).catch(e => { console.log(e) });
 
 trackerStore.getTopAlbums(parseInt(year, 10)).then(data => {
   albumPlays.value = data;
-});
+}).catch(e => { console.log(e) });
+
+trackerStore.getMonthlyCounts(parseInt(year, 10)).then(data => {
+  monthlyCounts.value = data;
+}).catch(e => { console.log(e) });
 
 const forward = () => {
   const nextYear = parseInt(year, 10) + 1;
