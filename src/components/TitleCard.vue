@@ -2,7 +2,7 @@
   <card>
     <div class="container">
       <div class="title-container">
-        <img v-if="iconName" class="icon" :src="`/src/assets/icons/${iconName}.png`" />
+        <img v-if="iconName" class="icon" :src="`/icons/${iconName}.png`" />
         <h1 class="title">{{ title }}</h1>
       </div>
       <div v-if="subtitles" class="subtitle">

@@ -1,9 +1,9 @@
 <template>
   <div class="header">
-    <img class="icon" :src="`/src/assets/icons/${icon || defaultIcon}.png`" />
+    <img class="icon" :src="`/icons/${icon || defaultIcon}.png`" />
     <h1 class="title">{{ title || defaultTitle }}</h1>
     <button class="right-button" @click="onRightButtonClick">
-      <img v-if="rightIcon" class="icon" :src="`/src/assets/icons/${rightIcon}.png`" />
+      <img v-if="rightIcon" class="icon" :src="`/icons/${rightIcon}.png`" />
     </button>
   </div>
 </template>
