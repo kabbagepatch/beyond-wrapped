@@ -48,10 +48,11 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import StatsCard from "./StatsCard.vue";
+import { PlayCounts } from "../stores/tracker.ts";
 
 const props = defineProps<{
   summary?: { key: string; value: string | number | undefined }[],
-  counts?: { label: string, count: number }[],
+  counts?: PlayCounts,
   cardOne?: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[] },
   cardTwo?: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[] },
   cardThree?: { title: string; entries: { left: string, right: string | number | undefined, link?: string }[] },

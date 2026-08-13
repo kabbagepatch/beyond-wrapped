@@ -46,7 +46,7 @@ import { ref } from "vue";
 import { useRoute } from "vue-router";
 import Header from "../Header.vue";
 import Stats from "../components/Stats.vue";
-import { PlayEntry, TrackStats, useTrackerStore } from "../stores/tracker.ts";
+import { PlayCounts, PlayEntry, TrackStats, useTrackerStore } from "../stores/tracker.ts";
 
 const trackerStore = useTrackerStore();
 const route = useRoute();
@@ -59,7 +59,7 @@ const stats = ref<TrackStats[]>([]);
 const dateSortedStats = ref<TrackStats[]>([]);
 const totalPlays = ref<number>(0);
 const timePlayed = ref<string>('');
-const playCounts = ref<{ label: string, count: number }[]>([]);
+const playCounts = ref<PlayCounts>([{ label: '0', count: 0 }]);
 
 trackerStore.getAlbumStats(album, artist).then(data => {
   stats.value = data;

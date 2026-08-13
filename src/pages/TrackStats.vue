@@ -33,7 +33,7 @@ import { ref } from "vue";
 import { useRoute } from "vue-router";
 import Header from "../Header.vue";
 import Card from "../components/Card.vue";
-import { PlayEntry, useTrackerStore } from "../stores/tracker.ts";
+import { PlayCounts, PlayEntry, useTrackerStore } from "../stores/tracker.ts";
 import Stats from "../components/Stats.vue";
 
 const trackerStore = useTrackerStore();
@@ -43,7 +43,7 @@ const artist = route.params.artist as string;
 
 const dateOptions = { year: 'numeric', month: '2-digit', day: '2-digit' } as const;
 const timeOptions = { hour: 'numeric', minute: '2-digit' } as const;
-const playCounts = ref<{ label: string, count: number }[]>([]);
+const playCounts = ref<PlayCounts>([{ label: '0', count: 0 }]);
 
 const plays = ref<PlayEntry[]>();
 trackerStore.getTrackPlays(track, artist).then(data => {

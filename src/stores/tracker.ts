@@ -16,6 +16,10 @@ type TrackCounts = {
 type YearlyTrackCount = { [year: number]: TrackCounts; };
 type MonthlyTrackCount = { [year: number]: { [month: string]: TrackCounts } };
 
+export type PlayCounts = { label: string, count: number }[];
+type YearlyPlayCount = { [year: number]: PlayCounts; };
+type MonthlyPlayCount = { [year: number]: { [month: string]: PlayCounts } };
+
 export type PlayEntry = {
   trackName: string;
   artistName: string;
@@ -45,6 +49,8 @@ export type SearchResults = {
 export const useTrackerStore = defineStore('tracker', () => {
   const yearlyTotals = ref<YearlyTrackCount>({});
   const monthlyTotals = ref<MonthlyTrackCount>({});
+  const monthlyCounts = ref<YearlyPlayCount>({});
+  const dailyCounts = ref<MonthlyPlayCount>({});
 
   const getTopTracks = async (year: number, month?: number): Promise<ItemPlayData[]> => {
     return getTopItems('tracks', year, month);
@@ -163,11 +169,14 @@ export const useTrackerStore = defineStore('tracker', () => {
     return result;
   }
 
-  const getMonthlyCounts = async(year: number): Promise<{ label: string, count: number }[]> => {
+  const getMonthlyCounts = async(year: number): Promise<PlayCounts> => {
+    if (monthlyCounts.value[year]?.length) {
+      return monthlyCounts.value[year];
+    }
     const result: any = await invoke('get_monthly_play_counts', { year });
 
     const months = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
-    return months.map((label, index) => {
+    const mapped = months.map((label, index) => {
       const month = index + 1;
       const found = result.find(
         (r: any) => parseInt(r.primary.split('-')[1], 10) === month
@@ -178,17 +187,30 @@ export const useTrackerStore = defineStore('tracker', () => {
         count: found?.play_count ?? 0,
       };
     });
+
+    monthlyCounts.value[year] = mapped;
+
+    return mapped;
   }
 
-  const getDailyCounts = async(year: number, month: number): Promise<{ label: string, count: number }[]> => {
+  const getDailyCounts = async(year: number, month: number): Promise<PlayCounts> => {
+    if (dailyCounts.value[year]?.[month]?.length) {
+      return dailyCounts.value[year][month];
+    }
+
     const result: any = await invoke('get_daily_play_counts', { year, month });
 
-    return result.map((r: any) => {
+    const mapped = result.map((r: any) => {
       return {
         label: r.primary.split('-')[2],
         count: r.play_count,
       };
     });
+
+    if (!dailyCounts.value[year]) dailyCounts.value[year] = {};
+    dailyCounts.value[year][month] = mapped;
+
+    return mapped;
   }
 
   const yearlyCountMap = (result: any) => {
@@ -200,7 +222,7 @@ export const useTrackerStore = defineStore('tracker', () => {
     });
   }
 
-  const getCustomCounts = async(from: string, to: string): Promise<{ label: string, count: number }[]> => {
+  const getCustomCounts = async(from: string, to: string): Promise<PlayCounts> => {
     const fromParts = from.split('-');
     const fromMonth = parseInt(fromParts[0], 10);
     const fromYear = parseInt(fromParts[1], 10);
@@ -224,19 +246,19 @@ export const useTrackerStore = defineStore('tracker', () => {
     }
   }
 
-  const getTrackPlayCounts = async(track: string, artist: string): Promise<{ label: string, count: number }[]> => {
+  const getTrackPlayCounts = async(track: string, artist: string): Promise<PlayCounts> => {
     const result: any = await invoke('get_item_play_counts', { freq: "year", artist, track });
 
     return yearlyCountMap(result);
   }
 
-  const getArtistPlayCounts = async(artist: string): Promise<{ label: string, count: number }[]> => {
+  const getArtistPlayCounts = async(artist: string): Promise<PlayCounts> => {
     const result: any = await invoke('get_item_play_counts', { freq: "year", artist });
 
     return yearlyCountMap(result);
   }
 
-  const getAlbumPlayCounts = async(album: string, artist: string): Promise<{ label: string, count: number }[]> => {
+  const getAlbumPlayCounts = async(album: string, artist: string): Promise<PlayCounts> => {
     const result: any = await invoke('get_item_play_counts', { freq: "year", artist, album });
 
     return yearlyCountMap(result);
