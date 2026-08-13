@@ -28,7 +28,7 @@
       
     <button @click="toggleTheme">
       <div class="theme-button">
-        <img class="icon" src="./assets/icons/paint-brush.png" />
+        <img class="icon" src="/icons/paint-brush.png" />
         <div class="theme-button-text">Toggle Theme</div>
       </div>
     </button>

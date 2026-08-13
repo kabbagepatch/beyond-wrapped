@@ -31,7 +31,6 @@ const monthString = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct"
 const year = route.params.year as string;
 
 const blank: ItemPlayData = { primary: '', secondary: '', playCount: 0, msPlayed: 0 }
-const blankC: PlayCounts = [{ label: '1', count: 0 }]
 const trackPlays = ref<ItemPlayData[]>([blank, blank, blank, blank, blank]);
 const artistPlays = ref<ItemPlayData[]>([blank, blank, blank, blank, blank]);
 const albumPlays = ref<ItemPlayData[]>([blank, blank, blank, blank, blank]);
